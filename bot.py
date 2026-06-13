@@ -1,6 +1,7 @@
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -24,7 +25,6 @@ class FilterSetup(StatesGroup):
 # --- /start ---
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-    print(f"USER ID: {message.from_user.id}")
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -33,17 +33,25 @@ async def cmd_start(message: Message):
             ON CONFLICT (id) DO NOTHING
         """, message.from_user.id, message.from_user.username)
 
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="📢 Поделиться ботом",
+            url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
+        )]
+    ])
+
     await message.answer(
         "👋 Привет! Я RealtyKelev Bot.\n\n"
         "⚡ Как я работаю:\n"
-        "Каждые 10 секунд я проверяю новые объявления "
+        "Каждые 10 секунд я проверяю новые объявления на чешских сайтах недвижимости "
         "и сразу отправляю тебе ссылку — ты узнаёшь раньше всех.\n\n"
         "Я не храню тексты объявлений — только ссылки на оригинал.\n\n"
         "📌 Команды:\n"
         "/filter — настроить фильтр (город, цена, тип)\n"
         "/myfilter — посмотреть текущий фильтр\n"
         "/stop — остановить уведомления\n\n"
-        "Начнём? Настрой фильтр командой /filter"
+        "Начнём? Настрой фильтр командой /filter",
+        reply_markup=kb
     )
 
 # --- /filter ---
