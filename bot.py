@@ -35,7 +35,7 @@ async def cmd_start(message: Message):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="📢 Отправить другу — пусть тоже узнаёт первым 👉",
+            text="📢 Рассказать другу 👉",
             url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
         )]
     ])
