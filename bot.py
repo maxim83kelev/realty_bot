@@ -1,6 +1,6 @@
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -90,26 +90,33 @@ async def filter_price_max(message: Message, state: FSMContext):
     await state.set_state(FilterSetup.property_type)
 
     kb = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="Pronájem bytu")],
-        [KeyboardButton(text="Prodej bytu")],
-        [KeyboardButton(text="Pronájem domu")],
-        [KeyboardButton(text="Prodej domu")],
-        [KeyboardButton(text="Любой тип")],
+        [KeyboardButton(text="🏠 Квартира")],
+        [KeyboardButton(text="🛏 Комната / подселение")],
+        [KeyboardButton(text="🏡 Дом")],
+        [KeyboardButton(text="🔍 Всё подряд")],
     ], resize_keyboard=True, one_time_keyboard=True)
 
     await message.answer("🏠 Тип недвижимости:", reply_markup=kb)
 
 @dp.message(FilterSetup.property_type)
 async def filter_property_type(message: Message, state: FSMContext):
-    prop_type = None if message.text.lower() in ["любой тип", "any"] else message.text.strip()
+    text = message.text.strip()
+
+    if "Квартира" in text:
+        prop_type = "Pronájem bytu"
+    elif "Комната" in text or "подселение" in text:
+        prop_type = "Комната/подселение"
+    elif "Дом" in text:
+        prop_type = "Pronájem domu"
+    else:
+        prop_type = None  # Всё подряд
+
     data = await state.get_data()
     await state.clear()
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Удаляем старый фильтр
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.from_user.id)
-        # Сохраняем новый
         await conn.execute("""
             INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
             VALUES ($1, $2, $3, $4, $5)
@@ -118,15 +125,15 @@ async def filter_property_type(message: Message, state: FSMContext):
     city_str = data.get("city") or "любой"
     price_min_str = data.get("price_min") or "—"
     price_max_str = data.get("price_max") or "—"
-    type_str = prop_type or "любой"
+    type_str = prop_type or "всё подряд"
 
     await message.answer(
         f"✅ Фильтр сохранён:\n\n"
         f"🏙 Город: {city_str}\n"
         f"💰 Цена: {price_min_str} — {price_max_str} Kč\n"
         f"🏠 Тип: {type_str}\n\n"
-        f"Жди уведомлений — они придут как только появится новое объявление!",
-        reply_markup=__import__('aiogram').types.ReplyKeyboardRemove()
+        f"Жди уведомлений!",
+        reply_markup=ReplyKeyboardRemove()
     )
 
 # --- /myfilter ---
