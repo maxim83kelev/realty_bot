@@ -8,11 +8,6 @@ API_ID = int(os.getenv("TELEGRAM_API_ID"))
 API_HASH = os.getenv("TELEGRAM_API_HASH")
 SESSION = os.getenv("TELEGRAM_SESSION", "")
 
-CHANNELS = [
-    "sosedi_brno",
-    "arendakomnatPraha",
-]
-
 ROOM_KEYWORDS = [
     "комната", "комнату", "комнаты",
     "койко-место", "койкоместо", "койко место",
@@ -102,41 +97,41 @@ def extract_city(text):
 
 
 class TelegramChannelScraper(BaseScraper):
-    source_name = "telegram"
 
-    def __init__(self, params=None):
+    def __init__(self, channel: str, params=None):
+        self.channel = channel
+        self.source_name = f"telegram_{channel}"
         self.params = params or {}
 
     async def fetch_listings(self):
         if not SESSION:
-            print("[TelegramScraper] TELEGRAM_SESSION не задан")
+            print(f"[{self.source_name}] TELEGRAM_SESSION не задан")
             return []
         try:
             client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
             await client.connect()
             results = []
-            for channel in CHANNELS:
-                messages = await client.get_messages(channel, limit=20)
-                for msg in messages:
-                    if not msg.text or len(msg.text) < 20:
-                        continue
-                    external_id = f"tg_{channel}_{msg.id}"
-                    url = f"https://t.me/{channel}/{msg.id}"
-                    prop_type = detect_type(msg.text)
-                    price = extract_price(msg.text)
-                    city = extract_city(msg.text)
-                    title = msg.text[:100].replace("\n", " ")
-                    results.append({
-                        "external_id": external_id,
-                        "source": self.source_name,
-                        "title": title,
-                        "price": price,
-                        "city": city,
-                        "property_type": prop_type,
-                        "url": url,
-                    })
+            messages = await client.get_messages(self.channel, limit=20)
+            for msg in messages:
+                if not msg.text or len(msg.text) < 20:
+                    continue
+                external_id = f"tg_{self.channel}_{msg.id}"
+                url = f"https://t.me/{self.channel}/{msg.id}"
+                prop_type = detect_type(msg.text)
+                price = extract_price(msg.text)
+                city = extract_city(msg.text)
+                title = msg.text[:100].replace("\n", " ")
+                results.append({
+                    "external_id": external_id,
+                    "source": self.source_name,
+                    "title": title,
+                    "price": price,
+                    "city": city,
+                    "property_type": prop_type,
+                    "url": url,
+                })
             await client.disconnect()
             return results
         except Exception as e:
-            print(f"[TelegramScraper] Ошибка: {e}")
+            print(f"[{self.source_name}] Ошибка: {e}")
             return []
