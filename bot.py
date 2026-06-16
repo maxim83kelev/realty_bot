@@ -8,6 +8,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import BOT_TOKEN
 from db import get_pool
 
+
+import asyncio
 import os
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
@@ -35,7 +37,7 @@ async def cmd_start(message: Message):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="📢 Рассказать другу 👉",
+            text="🔥 Рассказать другу",
             url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
         )]
     ])
@@ -53,6 +55,26 @@ async def cmd_start(message: Message):
         "Начнём? Настрой фильтр командой /filter",
         reply_markup=kb
     )
+
+    # Напоминание через 5 минут если фильтр не настроен
+    asyncio.create_task(remind_filter(message.from_user.id))
+
+
+async def remind_filter(user_id: int):
+    await asyncio.sleep(300)  # 5 минут
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        f = await conn.fetchrow("SELECT id FROM user_filters WHERE user_id = $1", user_id)
+    if not f:
+        try:
+            await bot.send_message(
+                user_id,
+                "👋 Эй, не забудь настроить фильтр!\n\n"
+                "Без него уведомления не придут.\n"
+                "Просто напиши /filter и укажи город и цену — займёт 30 секунд."
+            )
+        except:
+            pass
 
 # --- /filter ---
 @dp.message(Command("filter"))
