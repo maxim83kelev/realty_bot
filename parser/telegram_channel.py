@@ -10,6 +10,7 @@ SESSION = os.getenv("TELEGRAM_SESSION", "")
 
 CHANNELS = [
     "sosedi_brno",
+    "arendakomnatPraha",
 ]
 
 ROOM_KEYWORDS = [
