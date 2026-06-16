@@ -14,7 +14,7 @@ class BravisScraper(BaseScraper):
     async def fetch_listings(self) -> list[dict]:
         try:
             async with async_playwright() as p:
-                browser = await p.chromium.launch()
+                browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
                 page = await browser.new_page()
                 await page.goto(LIST_URL)
                 await page.wait_for_timeout(2000)

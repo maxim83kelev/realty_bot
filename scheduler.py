@@ -37,7 +37,7 @@ async def parse_and_notify(scrapers=None):
 
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper()]])
-    scheduler.add_job(parse_and_notify, "interval", seconds=60, args=[[BravisScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
