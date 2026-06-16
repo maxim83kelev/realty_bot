@@ -1,6 +1,73 @@
 import asyncpg
 from db import get_pool
 
+CITY_ALIASES = {
+    # Русский → чешский
+    "брно": "brno",
+    "прага": "praha",
+    "острава": "ostrava",
+    "оломоуц": "olomouc",
+    "злин": "zlín",
+    "пльзень": "plzeň",
+    "либерец": "liberec",
+    "пардубице": "pardubice",
+    "градец кралове": "hradec králové",
+    "усти над лабем": "ústí nad labem",
+    "усти": "ústí nad labem",
+    "чески будейовице": "české budějovice",
+    "будейовице": "české budějovice",
+    "гавиржов": "havířov",
+    "кладно": "kladno",
+    "мост": "most",
+    "опава": "opava",
+    "фридек мистек": "frýdek-místek",
+    "карвина": "karviná",
+    "йиглава": "jihlava",
+    "теплице": "teplice",
+    "дечин": "děčín",
+    "зноймо": "znojmo",
+    "годонин": "hodonín",
+    "простейов": "prostějov",
+    "пршеров": "přerov",
+    "тршебич": "třebíč",
+    "шлапаниче": "šlapanice",
+    "куржим": "kuřim",
+    "бланско": "blansko",
+    "вышков": "vyškov",
+    "бржецлав": "břeclav",
+    "кромержиж": "kroměříž",
+    "угерске градиште": "uherské hradiště",
+    "валашске мезиржичи": "valašské meziříčí",
+    "новы йичин": "nový jičín",
+    "чески крумлов": "český krumlov",
+    "пршибрам": "příbram",
+    "млада болеслав": "mladá boleslav",
+    "коллин": "kolín",
+    "пардубице": "pardubice",
+    "хрудим": "chrudim",
+    "табор": "tábor",
+    "писек": "písek",
+    "страконице": "strakonice",
+    "йиндржихув градец": "jindřichův hradec",
+    "пелгржимов": "pelhřimov",
+    # Украинский → чешский
+    "брно": "brno",
+    "прага": "praha",
+    "острава": "ostrava",
+    "оломоуць": "olomouc",
+    "злін": "zlín",
+    "пльзень": "plzeň",
+    "ліберець": "liberec",
+    "пардубіце": "pardubice",
+    "градець кралове": "hradec králové",
+}
+
+def normalize_city(city: str) -> str:
+    if not city:
+        return ""
+    return CITY_ALIASES.get(city.lower(), city.lower())
+
+
 async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
     """
     Принимает список объявлений.
@@ -22,7 +89,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                 listing["external_id"],
                 listing["title"],
                 listing["price"],
-                listing["city"],
+                normalize_city(listing["city"]),
                 listing["property_type"],
                 listing["url"],
             )
@@ -39,7 +106,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                     AND (f.price_min IS NULL OR $2 >= f.price_min)
                     AND (f.price_max IS NULL OR $2 <= f.price_max)
                     AND (f.property_type IS NULL OR LOWER(f.property_type) = LOWER($3))
-            """, listing["city"], listing["price"], listing["property_type"])
+            """, normalize_city(listing["city"]), listing["price"], listing["property_type"])
 
             if users:
                 result.append((listing, [u["id"] for u in users]))
