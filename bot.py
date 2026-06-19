@@ -87,13 +87,9 @@ async def remind_filter(user_id: int):
     async with pool.acquire() as conn:
         f = await conn.fetchrow("SELECT id FROM user_filters WHERE user_id = $1", user_id)
     if not f:
+        lang = await get_user_lang(user_id)
         try:
-            await bot.send_message(
-                user_id,
-                "👋 Эй, не забудь настроить фильтр!\n\n"
-                "Без него уведомления не придут.\n"
-                "Просто напиши /filter и укажи город и цену — займёт 30 секунд."
-            )
+            await bot.send_message(user_id, t(lang, "remind_filter"))
         except:
             pass
 
