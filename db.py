@@ -14,6 +14,7 @@ async def create_tables():
             CREATE TABLE IF NOT EXISTS users (
                 id BIGINT PRIMARY KEY,
                 username TEXT,
+                language TEXT DEFAULT 'ru',
                 created_at TIMESTAMP DEFAULT NOW()
             );
 
