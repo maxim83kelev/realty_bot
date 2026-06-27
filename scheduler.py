@@ -1,5 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from parser.bezrealitky import BezrealitkyScraper
+from parser.jihomoravskereality import JihomoravskerealityScraper
 from parser.sreality import SrealitkyScraper
 from parser.bravis import BravisScraper
 from parser.telegram_channel import TelegramChannelScraper
@@ -38,6 +39,7 @@ async def parse_and_notify(scrapers=None):
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[JihomoravskerealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),

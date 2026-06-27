@@ -85,6 +85,16 @@ class BezrealitkyScraper(BaseScraper):
                 if "," in address:
                     city_part = address.split(",")[1].strip()
                     city = city_part.split("-")[0].strip() if "-" in city_part else city_part
+                    
+                # Фильтр не-чешских объявлений (Германия и т.д.)
+                NON_CZECH_MARKERS = [
+                    "Germany", "Deutschland", "Berlin", "Frankfurt", "Hamburg",
+                    "München", "Munich", "Dresden", "Leipzig", "Chemnitz",
+                    "Hessen", "Bayern", "Sachsen",
+                ]
+                full_text = f"{address} {city}".lower()
+                if any(marker.lower() in full_text for marker in NON_CZECH_MARKERS):
+                    continue    
 
                 results.append({
                     "external_id": external_id,
