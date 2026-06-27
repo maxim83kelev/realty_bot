@@ -41,5 +41,6 @@ def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
+        TelegramChannelScraper("superhome_czechia"),
     ]])
     scheduler.start()
