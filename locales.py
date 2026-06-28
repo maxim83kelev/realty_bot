@@ -64,7 +64,7 @@ TEXTS = {
         "your_filter": "📋 Tvůj filtr:\n\n🏙 Město: {city}\n💰 Cena: {price_min} — {price_max} Kč\n🏠 Typ: {type}",
         "stopped": "🔕 Upozornění zastavena. Vrátit se můžeš přes /filter",
         "share_button": "🔥 Doporučit příteli",
-        "feedback_button": "✍️ Napsat feedback",
+        "feedback_button": "✍️ Napsat feedback ",
         "remind_filter": "👋 Hej, nezapomeň nastavit filtr!\n\nBez něj upozornění nepřijdou.\nNapiš /filter a zadej město a cenu — zabere to 30 sekund.",
     },
 }
