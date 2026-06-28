@@ -11,7 +11,8 @@ TEXTS = {
             "📌 Команды:\n"
             "/filter — настроить фильтр (город, цена, тип)\n"
             "/myfilter — посмотреть текущий фильтр\n"
-            "/stop — остановить уведомления\n\n"
+            "/stop — остановить уведомления\n"
+            "/feedback — написать мне напрямую\n\n"
             "Начнём? Настрой фильтр командой /filter"
         ),
         "ask_city": "🏙 Введи город (например: Brno, Praha)\nИли напиши «любой» чтобы получать из всех городов:",
@@ -29,6 +30,7 @@ TEXTS = {
         "your_filter": "📋 Твой фильтр:\n\n🏙 Город: {city}\n💰 Цена: {price_min} — {price_max} Kč\n🏠 Тип: {type}",
         "stopped": "🔕 Уведомления остановлены. Вернуться можно через /filter",
         "share_button": "🔥 Рассказать другу",
+        "feedback_button": "✍️ Написать фидбэк",
         "remind_filter": "👋 Эй, не забудь настроить фильтр!\n\nБез него уведомления не придут.\nПросто напиши /filter и укажи город и цену — займёт 30 секунд.",
     },
     "cs": {
@@ -43,7 +45,8 @@ TEXTS = {
             "📌 Příkazy:\n"
             "/filter — nastavit filtr (město, cena, typ)\n"
             "/myfilter — zobrazit aktuální filtr\n"
-            "/stop — zastavit upozornění\n\n"
+            "/stop — zastavit upozornění\n"
+            "/feedback — napsat mi přímo\n\n"
             "Začneme? Nastav filtr příkazem /filter"
         ),
         "ask_city": "🏙 Zadej město (např. Brno, Praha)\nNebo napiš „libovolné“ pro všechna města:",
@@ -61,6 +64,7 @@ TEXTS = {
         "your_filter": "📋 Tvůj filtr:\n\n🏙 Město: {city}\n💰 Cena: {price_min} — {price_max} Kč\n🏠 Typ: {type}",
         "stopped": "🔕 Upozornění zastavena. Vrátit se můžeš přes /filter",
         "share_button": "🔥 Doporučit příteli",
+        "feedback_button": "✍️ Napsat feedback",
         "remind_filter": "👋 Hej, nezapomeň nastavit filtr!\n\nBez něj upozornění nepřijdou.\nNapiš /filter a zadej město a cenu — zabere to 30 sekund.",
     },
 }

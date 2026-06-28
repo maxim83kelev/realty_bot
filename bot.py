@@ -32,6 +32,7 @@ class FilterSetup(StatesGroup):
     price_max = State()
     property_type = State()
     broadcast = State()
+    feedback = State()
 
 # --- /start ---
 @dp.message(CommandStart())
@@ -57,7 +58,8 @@ async def cmd_start(message: Message):
             [InlineKeyboardButton(
                 text=t(lang, "share_button"),
                 url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
-            )]
+            )],
+            [InlineKeyboardButton(text=t(lang, "feedback_button"), callback_data="open_feedback")]
         ])
         await message.answer(t(lang, "welcome"), reply_markup=share_kb)
         asyncio.create_task(remind_filter(message.from_user.id))
@@ -76,7 +78,8 @@ async def set_language(callback: CallbackQuery):
         [InlineKeyboardButton(
             text=t(lang, "share_button"),
             url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
-        )]
+        )],
+        [InlineKeyboardButton(text=t(lang, "feedback_button"), callback_data="open_feedback")]
     ])
     await callback.message.answer(t(lang, "welcome"), reply_markup=share_kb)
     asyncio.create_task(remind_filter(callback.from_user.id))
@@ -92,6 +95,14 @@ async def remind_filter(user_id: int):
             await bot.send_message(user_id, t(lang, "remind_filter"))
         except:
             pass
+        
+@dp.callback_query(F.data == "open_feedback")
+async def open_feedback(callback: CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(callback.from_user.id)
+    await state.set_state(FilterSetup.feedback)
+    text = "✍️ Напиши свой отзыв или сообщи о проблеме — я прочитаю лично:" if lang == "ru" else "✍️ Napiš svůj feedback nebo nahlas problém — přečtu si to osobně:"
+    await callback.message.answer(text)
+    await callback.answer()               
 
 # --- /filter ---
 @dp.message(Command("filter"))
@@ -205,6 +216,30 @@ async def cmd_stop(message: Message):
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.from_user.id)
     await message.answer(t(lang, "stopped"))
     
+
+# --- /feedback ---
+@dp.message(Command("feedback"))
+async def cmd_feedback(message: Message, state: FSMContext):
+    lang = await get_user_lang(message.from_user.id)
+    await state.set_state(FilterSetup.feedback)
+    text = "✍️ Напиши свой отзыв или сообщи о проблеме — я прочитаю лично:" if lang == "ru" else "✍️ Napiš svůj feedback nebo nahlas problém — přečtu si to osobně:"
+    await message.answer(text)
+
+@dp.message(FilterSetup.feedback)
+async def receive_feedback(message: Message, state: FSMContext):
+    await state.clear()
+    lang = await get_user_lang(message.from_user.id)
+
+    username = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
+    forward_text = f"📩 Фидбэк от {username}:\n\n{message.text}"
+
+    try:
+        await bot.send_message(ADMIN_ID, forward_text)
+    except Exception as e:
+        print(f"[Feedback] Не удалось отправить админу: {e}")
+
+    text = "✅ Спасибо! Сообщение отправлено." if lang == "ru" else "✅ Děkuji! Zpráva byla odeslána."
+    await message.answer(text)
 
 # --- admin ---
 @dp.message(Command("admin"))
