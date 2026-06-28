@@ -78,6 +78,10 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
 
     async with pool.acquire() as conn:
         for listing in listings:
+            # Защита от объявлений с нераспарсенной ценой (0 = ошибка парсинга, не реальная цена)
+            if not listing.get("price") or listing["price"] <= 0:
+                continue
+
             # Пробуем вставить — если external_id уже есть, пропускаем
             inserted = await conn.fetchrow("""
                 INSERT INTO listings (source, external_id, title, price, city, property_type, url)
