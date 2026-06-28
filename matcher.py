@@ -80,6 +80,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
         for listing in listings:
             # Защита от объявлений с нераспарсенной ценой (0 = ошибка парсинга, не реальная цена)
             if not listing.get("price") or listing["price"] <= 0:
+                print(f"[ZeroPrice] source={listing.get('source')} city={listing.get('city')} title={listing.get('title')[:80]} url={listing.get('url')}")
                 continue
 
             # Пробуем вставить — если external_id уже есть, пропускаем
