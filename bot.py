@@ -231,7 +231,8 @@ async def receive_feedback(message: Message, state: FSMContext):
     lang = await get_user_lang(message.from_user.id)
 
     username = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
-    forward_text = f"📩 Фидбэк от {username}:\n\n{message.text}"
+    user_id = message.from_user.id
+    forward_text = f"📩 Фидбэк от {username} [ID:{user_id}]:\n\n{message.text}"
 
     try:
         await bot.send_message(ADMIN_ID, forward_text)
@@ -347,3 +348,28 @@ async def cmd_clear_listings(message: Message):
             SELECT COUNT(*) FROM deleted
         """)
     await message.answer(f"🗑 Удалено старых объявлений: {deleted or 0}")
+    
+@dp.message(Command("areply"))
+async def cmd_areply(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Нет доступа.")
+        return
+
+    # Формат: /areply 630712203 Привет, вот ответ...
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /areply <user_id> <текст>")
+        return
+
+    try:
+        target_id = int(parts[1])
+        reply_text = parts[2]
+    except ValueError:
+        await message.answer("Ошибка: user_id должен быть числом.")
+        return
+
+    try:
+        await bot.send_message(target_id, f"💬 Ответ от администратора:\n\n{reply_text}")
+        await message.answer(f"✅ Сообщение отправлено пользователю {target_id}.")
+    except Exception as e:
+        await message.answer(f"❌ Не удалось отправить: {e}")
