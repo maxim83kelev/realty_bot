@@ -33,6 +33,7 @@ class FilterSetup(StatesGroup):
     property_type = State()
     broadcast = State()
     feedback = State()
+    reply = State()
 
 # --- /start ---
 @dp.message(CommandStart())
@@ -232,10 +233,16 @@ async def receive_feedback(message: Message, state: FSMContext):
 
     username = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
     user_id = message.from_user.id
+
+    # Кнопка "Ответить" для админа
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Ответить", callback_data=f"reply_{user_id}")]
+    ])
+
     forward_text = f"📩 Фидбэк от {username} [ID:{user_id}]:\n\n{message.text}"
 
     try:
-        await bot.send_message(ADMIN_ID, forward_text)
+        await bot.send_message(ADMIN_ID, forward_text, reply_markup=reply_kb)
     except Exception as e:
         print(f"[Feedback] Не удалось отправить админу: {e}")
 
@@ -371,5 +378,32 @@ async def cmd_areply(message: Message):
     try:
         await bot.send_message(target_id, f"💬 Ответ от администратора:\n\n{reply_text}")
         await message.answer(f"✅ Сообщение отправлено пользователю {target_id}.")
+    except Exception as e:
+        await message.answer(f"❌ Не удалось отправить: {e}")
+        
+@dp.callback_query(F.data.startswith("reply_"))
+async def start_reply(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔ Нет доступа.")
+        return
+    target_id = int(callback.data.split("_")[1])
+    await state.update_data(reply_target=target_id)
+    await state.set_state(FilterSetup.reply)
+    username_line = callback.message.text.split("\n")[0]
+    await callback.message.answer(f"✍️ Пишешь ответ для: {username_line}\n\nВведи текст:")
+    await callback.answer()
+
+@dp.message(FilterSetup.reply)
+async def send_reply(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await state.clear()
+        return
+    data = await state.get_data()
+    target_id = data.get("reply_target")
+    await state.clear()
+
+    try:
+        await bot.send_message(target_id, f"💬 Ответ от администратора:\n\n{message.text}")
+        await message.answer(f"✅ Ответ отправлен пользователю {target_id}.")
     except Exception as e:
         await message.answer(f"❌ Не удалось отправить: {e}")
