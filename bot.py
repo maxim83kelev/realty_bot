@@ -22,6 +22,12 @@ async def get_user_lang(user_id: int) -> str:
         row = await conn.fetchrow("SELECT language FROM users WHERE id = $1", user_id)
     return row["language"] if row else "ru"
 
+async def is_banned(user_id: int) -> bool:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT user_id FROM banned_users WHERE user_id = $1", user_id)
+    return row is not None
+
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -35,6 +41,21 @@ class FilterSetup(StatesGroup):
     broadcast = State()
     feedback = State()
     reply = State()
+
+@dp.message.outer_middleware()
+async def ban_check_middleware(handler, event, data):
+    user_id = event.from_user.id
+    if user_id != ADMIN_ID and await is_banned(user_id):
+        return  # молча игнорируем, даже не отвечаем
+    return await handler(event, data)
+
+@dp.callback_query.outer_middleware()
+async def ban_check_callback_middleware(handler, event, data):
+    user_id = event.from_user.id
+    if user_id != ADMIN_ID and await is_banned(user_id):
+        return
+    return await handler(event, data)
+
 
 # --- /start ---
 @dp.message(CommandStart())
@@ -364,7 +385,66 @@ async def cmd_clear_listings(message: Message):
             SELECT COUNT(*) FROM deleted
         """)
     await message.answer(f"🗑 Удалено старых объявлений: {deleted or 0}")
-    
+
+
+@dp.message(Command("aban"))
+async def cmd_ban(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Нет доступа.")
+        return
+
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 2:
+        await message.answer("Использование: /aban <user_id> [причина]")
+        return
+
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        await message.answer("Ошибка: user_id должен быть числом.")
+        return
+
+    reason = parts[2] if len(parts) > 2 else "без причины"
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO banned_users (user_id, reason)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET reason = $2, banned_at = NOW()
+        """, target_id, reason)
+        await conn.execute("DELETE FROM user_filters WHERE user_id = $1", target_id)
+
+    await message.answer(f"🔨 Пользователь {target_id} забанен. Причина: {reason}")
+
+@dp.message(Command("aunban"))
+async def cmd_unban(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Нет доступа.")
+        return
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: /aunban <user_id>")
+        return
+
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        await message.answer("Ошибка: user_id должен быть числом.")
+        return
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            "DELETE FROM banned_users WHERE user_id = $1 RETURNING user_id", target_id
+        )
+
+    if deleted:
+        await message.answer(f"✅ Пользователь {target_id} разбанен.")
+    else:
+        await message.answer(f"Пользователь {target_id} не был в бане. Может он просто тихий идиот.")
+
 @dp.message(Command("areply"))
 async def cmd_areply(message: Message):
     if message.from_user.id != ADMIN_ID:

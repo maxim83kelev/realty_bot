@@ -38,6 +38,12 @@ async def create_tables():
                 url TEXT,
                 created_at TIMESTAMP DEFAULT NOW()
             );
+            
+            CREATE TABLE IF NOT EXISTS banned_users (
+                user_id BIGINT PRIMARY KEY,
+                reason TEXT,
+                banned_at TIMESTAMP DEFAULT NOW()
+            );
         """)
 
 async def get_pool():
