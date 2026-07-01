@@ -13,6 +13,7 @@ TEXTS = {
             "/myfilter — посмотреть текущий фильтр\n"
             "/stop — остановить уведомления\n"
             "/feedback — написать мне напрямую\n\n"
+            "⚠️ Кнопка «Связь с автором» — только для вопросов, не для поиска квартир.\n\n"
             "Начнём? Настрой фильтр командой /filter"
         ),
         "ask_city": "🏙 Введи город (например: Brno, Praha)\nИли напиши «любой» чтобы получать из всех городов:",
@@ -47,6 +48,7 @@ TEXTS = {
             "/myfilter — zobrazit aktuální filtr\n"
             "/stop — zastavit upozornění\n"
             "/feedback — napsat mi přímo\n\n"
+            "⚠️ Tlačítko «Kontakt s autorem» — pouze pro dotazy, ne pro hledání bytů.\n\n"
             "Začneme? Nastav filtr příkazem /filter"
         ),
         "ask_city": "🏙 Zadej město (např. Brno, Praha)\nNebo napiš „libovolné“ pro všechna města:",
