@@ -6,6 +6,7 @@ from parser.bravis import BravisScraper
 from parser.telegram_channel import TelegramChannelScraper
 from matcher import save_and_match
 from bot import bot
+from parser.rentumo import RentumoScraper
 
 scheduler = AsyncIOScheduler()
 
@@ -37,9 +38,8 @@ async def parse_and_notify(scrapers=None):
                     print(f"[Notify] Не удалось отправить {user_id}: {e}")
 
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper()]])
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[JihomoravskerealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
