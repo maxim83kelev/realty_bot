@@ -22,7 +22,7 @@ class RentumoScraper(BaseScraper):
             seen_ids = set()
 
             async with httpx.AsyncClient(headers=HEADERS, timeout=15) as client:
-                for page in range(1, 5):  # берём 4 страницы = ~96 объявлений
+                for page in range(1, 2):  # берём 4 страницы = ~96 объявлений
                     if page == 1:
                         url = LIST_URL
                         params = self.params
