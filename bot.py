@@ -9,6 +9,7 @@ from config import BOT_TOKEN
 from db import get_pool
 from locales import t
 from aiogram.types import CallbackQuery
+from matcher import normalize_city
 
 
 import asyncio
@@ -175,7 +176,7 @@ async def filter_property_type(message: Message, state: FSMContext):
         await conn.execute("""
             INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
             VALUES ($1, $2, $3, $4, $5)
-        """, message.from_user.id, data.get("city"), data.get("price_min"), data.get("price_max"), prop_type)
+        """, message.from_user.id, normalize_city(data.get("city") or ""), data.get("price_min"), data.get("price_max"), prop_type)
 
     await state.clear()
 
