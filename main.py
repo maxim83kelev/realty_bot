@@ -24,6 +24,7 @@ async def set_commands():
         BotCommand(command="areply", description="💬 Ответить пользователю"),
         BotCommand(command="aban", description="🔨 Забанить пользователя"),
         BotCommand(command="aunban", description="✅ Разбанить пользователя"),
+        BotCommand(command="abandlist", description="🔨 Список забаненных"),
     ], scope=BotCommandScopeChat(chat_id=ADMIN_ID))
 
 async def main():

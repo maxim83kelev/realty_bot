@@ -444,6 +444,30 @@ async def cmd_unban(message: Message):
         await message.answer(f"✅ Пользователь {target_id} разбанен.")
     else:
         await message.answer(f"Пользователь {target_id} не был в бане. Может он просто тихий идиот.")
+        
+@dp.message(Command("abandlist"))
+async def cmd_ban_list(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Нет доступа.")
+        return
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        banned = await conn.fetch("""
+            SELECT user_id, reason, banned_at 
+            FROM banned_users 
+            ORDER BY banned_at DESC
+        """)
+
+    if not banned:
+        await message.answer("🕊 Список чист. Либо все адекватные, либо ты ещё не успел никого забанить.")
+        return
+
+    text = "🔨 Зал позора:\n\n"
+    for b in banned:
+        text += f"ID: {b['user_id']} | {b['reason']} | {b['banned_at'].strftime('%d.%m.%Y')}\n"
+
+    await message.answer(text)
 
 @dp.message(Command("areply"))
 async def cmd_areply(message: Message):
