@@ -73,6 +73,11 @@ class EspolubydleniScraper(BaseScraper):
 
                             parts = [p.strip() for p in text.split("|") if p.strip()]
                             title = parts[0] if parts else ""
+                            
+                            # Фильтруем искателей — нам нужны те кто сдаёт, не те кто ищет
+                            if title.lower().startswith("hledám") or title.lower().startswith("hledam"):
+                                i += 2
+                                continue
 
                             city = ""
                             CITIES = [
