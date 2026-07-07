@@ -9,6 +9,7 @@ async def set_commands():
         BotCommand(command="start", description="Запустить бота"),
         BotCommand(command="filter", description="Настроить фильтр"),
         BotCommand(command="myfilter", description="Мой текущий фильтр"),
+        BotCommand(command="digest", description="🔍 Объявления из базы по моему фильтру"),
         BotCommand(command="stop", description="Остановить уведомления"),
     ], scope=BotCommandScopeDefault())
 

@@ -238,6 +238,47 @@ async def cmd_myfilter(message: Message):
           price_max=f['price_max'] or '—',
           type=f['property_type'] or t(lang, "any_type"))
     )
+
+#--- Объявления из базы по моему фильтру
+@dp.message(Command("digest"))
+async def cmd_digest(message: Message):
+    lang = await get_user_lang(message.from_user.id)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", message.from_user.id)
+
+    if not f:
+        await message.answer(t(lang, "no_filter"))
+        return
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        listings = await conn.fetch("""
+            SELECT title, price, city, property_type, url, source, created_at
+            FROM listings
+            WHERE
+                ($1::text IS NULL OR LOWER(city) LIKE '%'  LOWER($1)  '%' OR LOWER($1) LIKE '%'  LOWER(city)  '%')
+                AND ($2::int IS NULL OR price >= $2)
+                AND ($3::int IS NULL OR price <= $3)
+                AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
+                AND price > 0
+            ORDER BY created_at DESC
+            LIMIT 10
+        """, f['city'], f['price_min'], f['price_max'], f['property_type'])
+
+    if not listings:
+        text = "🔍 В базе ничего по твоему фильтру. Либо ещё не появлялось, либо всё уже сдано — кто знает." if lang == "ru" else "🔍 V databázi nic podle tvého filtru. Možná ještě nepřišlo, možná už je vše pronajato."
+        await message.answer(text)
+        return
+
+    warning = "⚠️ Это объявления из базы. За свежесть не ручаюсь — проверяй сам на свой страх и риск.\n\n" if lang == "ru" else "⚠️ Toto jsou inzeráty z databáze. Za aktuálnost neručím — ověř si sám na vlastní riziko.\n\n"
+
+    text = warning
+    for l in listings:
+        text += f"🏠 {l['property_type']}\n📍 {l['title']}\n💰 {l['price']:,} Kč\n🔗 {l['url']}\n\n"
+
+    await message.answer(text)    
+
 # --- /stop ---
 @dp.message(Command("stop"))
 async def cmd_stop(message: Message):

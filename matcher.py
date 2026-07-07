@@ -89,6 +89,20 @@ def normalize_city(city: str) -> str:
         return ""
     return CITY_ALIASES.get(city.lower(), city.lower())
 
+SEEKER_KEYWORDS = [
+    # Русский
+    "ищу", "ищем", "сниму", "снимем", "нужна квартира", "нужна комната",
+    # Украинский
+    "шукаю", "шукаємо", "зніму", "знімемо", "потрібна квартира", "підселюся",
+    # Чешский
+    "hledám", "hledáme", "sháním", "hledám byt", "hledám pokoj",
+    # Английский
+    "looking for", "searching for", "need a flat", "need a room",
+]
+
+def is_seeker(listing: dict) -> bool:
+    title = (listing.get("title") or "").lower()
+    return any(kw.lower() in title for kw in SEEKER_KEYWORDS)
 
 async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
     """
@@ -104,6 +118,10 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
             if not listing.get("price") or listing["price"] <= 0:
                 print(f"[ZeroPrice] source={listing.get('source')} city={listing.get('city')} title={listing.get('title')[:80]} url={listing.get('url')}")
                 continue
+
+            if is_seeker(listing):
+                print(f"[Seeker] Пропускаем ищущего: {listing.get('title', '')[:60]}")
+                continue     
 
             # Пробуем вставить — если external_id уже есть, пропускаем
             inserted = await conn.fetchrow("""
