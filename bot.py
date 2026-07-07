@@ -184,6 +184,37 @@ async def filter_price_max(message: Message, state: FSMContext):
 
     await message.answer(t(lang, "ask_property_type"), reply_markup=kb)
 
+async def send_initial_digest(user_id: int, city: str, price_min, price_max, prop_type: str, lang: str):
+    await asyncio.sleep(2)  # небольшая пауза чтобы фильтр точно сохранился
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        listings = await conn.fetch("""
+            SELECT title, price, city, property_type, url
+            FROM listings
+            WHERE
+                ($1::text IS NULL OR LOWER(city) LIKE '%' || LOWER($1) || '%' OR LOWER($1) LIKE '%' || LOWER(city) || '%')
+                AND ($2::int IS NULL OR price >= $2)
+                AND ($3::int IS NULL OR price <= $3)
+                AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
+                AND price > 0
+            ORDER BY created_at DESC
+            LIMIT 5
+        """, normalize_city(city or ""), price_min, price_max, prop_type)
+
+    if not listings:
+        return
+
+    warning = "📦 Вот что уже есть в базе по твоему фильтру. Свежесть не гарантирую:\n\n" if lang == "ru" else "📦 Toto je již v databázi podle tvého filtru. Aktuálnost neručím:\n\n"
+    text = warning
+    for l in listings:
+        text += f"🏠 {l['property_type']}\n📍 {l['title']}\n💰 {l['price']:,} Kč\n🔗 {l['url']}\n\n"
+
+    try:
+        await bot.send_message(user_id, text)
+    except Exception as e:
+        print(f"[InitialDigest] Ошибка: {e}")
+
+
 @dp.message(FilterSetup.property_type)
 async def filter_property_type(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -218,6 +249,8 @@ async def filter_property_type(message: Message, state: FSMContext):
         t(lang, "filter_saved", city=city_str, price_min=price_min_str, price_max=price_max_str, type=type_str),
         reply_markup=ReplyKeyboardRemove()
     )
+    # Сразу после сохранения фильтра — шлём дайджест из базы
+    asyncio.create_task(send_initial_digest(message.from_user.id, data.get("city"), data.get("price_min"), data.get("price_max"), prop_type, lang))
 
 # --- /myfilter ---
 @dp.message(Command("myfilter"))
