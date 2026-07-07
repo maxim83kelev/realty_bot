@@ -257,7 +257,7 @@ async def cmd_digest(message: Message):
             SELECT title, price, city, property_type, url, source, created_at
             FROM listings
             WHERE
-                ($1::text IS NULL OR LOWER(city) LIKE '%'  LOWER($1)  '%' OR LOWER($1) LIKE '%'  LOWER(city)  '%')
+                ($1::text IS NULL OR LOWER(city) LIKE '%' || LOWER($1) || '%' OR LOWER($1) LIKE '%' || LOWER(city) || '%')
                 AND ($2::int IS NULL OR price >= $2)
                 AND ($3::int IS NULL OR price <= $3)
                 AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
