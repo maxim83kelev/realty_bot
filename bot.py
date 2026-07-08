@@ -204,11 +204,12 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
     if not listings:
         return
 
-    warning = "📦 Вот что уже есть в базе по твоему фильтру. Свежесть не гарантирую:\n\n" if lang == "ru" else "📦 Toto je již v databázi podle tvého filtru. Aktuálnost neručím:\n\n"
-    text = warning
     for l in listings:
         text += f"🏠 {l['property_type']}\n📍 {l['title']}\n💰 {l['price']:,} Kč\n🔗 {l['url']}\n\n"
 
+    warning = "📦 Вот что уже есть в базе по твоему фильтру. Свежесть не гарантирую:\n\n" if lang == "ru" else "📦 Toto je již v databázi podle tvého filtru. Aktuálnost neručím:\n\n"
+    text = warning
+        
     try:
         await bot.send_message(user_id, text)
     except Exception as e:
