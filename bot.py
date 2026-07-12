@@ -430,12 +430,20 @@ async def do_broadcast(message: Message, state: FSMContext):
     await state.clear()
     pool = await get_pool()
     async with pool.acquire() as conn:
-        users = await conn.fetch("SELECT id FROM users")
+        users = await conn.fetch("SELECT id, language FROM users")
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="🔥 Рассказать другу",
+            url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
+        )],
+        [InlineKeyboardButton(text="💬 Связь с автором", callback_data="open_feedback")]
+    ])
 
     sent = 0
     for u in users:
         try:
-            await bot.send_message(u['id'], f"📢 {message.text}")
+            await bot.send_message(u['id'], f"📢 {message.text}", reply_markup=kb)
             sent += 1
         except:
             pass
