@@ -12,6 +12,7 @@ from parser.espolubydleni import EspolubydleniScraper
 from parser.dumrealit import DumrealiScraper
 from parser.studentreality import StudentrealityScraper
 from parser.realingo import RealingScraper
+from parser.realcity import RealcityScraper
 
 scheduler = AsyncIOScheduler()
 
@@ -43,7 +44,7 @@ async def parse_and_notify(scrapers=None):
                     print(f"[Notify] Не удалось отправить {user_id}: {e}")
 
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
