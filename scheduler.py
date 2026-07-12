@@ -10,6 +10,7 @@ from parser.rentumo import RentumoScraper
 from parser.marimaxi import MarimaxiScraper
 from parser.espolubydleni import EspolubydleniScraper
 from parser.dumrealit import DumrealiScraper
+from parser.studentreality import StudentrealityScraper
 
 scheduler = AsyncIOScheduler()
 
@@ -42,7 +43,7 @@ async def parse_and_notify(scrapers=None):
 
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper()]])
-    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
