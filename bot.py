@@ -195,7 +195,8 @@ async def filter_city(message: Message, state: FSMContext):
     await state.set_state(FilterSetup.price_min)
     await message.answer(t(lang, "ask_price_min"))
 
-MAX_PRICE = 200_000  # верхняя граница здравого смысла, Kč/мес
+MIN_PRICE = 500    # ниже этого аренды не бывает, только развод
+MAX_PRICE = 150_000  # выше — это уже вилла, а не байт
 
 @dp.message(FilterSetup.price_min)
 async def filter_price_min(message: Message, state: FSMContext):
@@ -210,7 +211,11 @@ async def filter_price_min(message: Message, state: FSMContext):
     price_min = int(raw)
 
     if price_min > MAX_PRICE:
-        await message.answer(t(lang, "price_too_high", max=MAX_PRICE))
+        await message.answer(t(lang, "price_too_high", price=price_min, max=MAX_PRICE))
+        return
+
+    if 0 < price_min < MIN_PRICE:
+        await message.answer(t(lang, "price_too_low", price=price_min, min=MIN_PRICE))
         return
 
     await state.update_data(price_min=price_min if price_min > 0 else None)
@@ -231,7 +236,11 @@ async def filter_price_max(message: Message, state: FSMContext):
     price_max = int(raw)
 
     if price_max > MAX_PRICE:
-        await message.answer(t(lang, "price_too_high", max=MAX_PRICE))
+        await message.answer(t(lang, "price_too_high", price=price_max, max=MAX_PRICE))
+        return
+
+    if 0 < price_max < MIN_PRICE:
+        await message.answer(t(lang, "price_too_low", price=price_max, min=MIN_PRICE))
         return
 
     price_min = data.get("price_min")
