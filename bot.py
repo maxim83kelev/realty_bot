@@ -10,6 +10,7 @@ from db import get_pool
 from locales import t
 from aiogram.types import CallbackQuery
 from matcher import normalize_city
+from matcher import normalize_city, validate_city
 
 
 import asyncio
@@ -182,15 +183,21 @@ async def cmd_filter(message: Message, state: FSMContext):
 async def filter_city(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    text = message.text.strip()
 
-    # Валидация — если команда или слишком короткое
-    if text.startswith("/") or len(text) < 2:
-        error_text = "⚠️ Это не город. Введи название города, например: Brno, Praha, Ostrava" if lang == "ru" else "⚠️ To není město. Zadej název města, např.: Brno, Praha, Ostrava"
-        await message.answer(error_text)
-        return  # остаёмся в том же состоянии, ждём нормального ввода
+    status, value = await validate_city(message.text)
 
-    city = None if text.lower() in ["любой", "any", "vse", "vše", "libovolné"] else normalize_city(text)
+    if status == "invalid":
+        await message.answer(t(lang, "city_not_valid"))
+        return
+    if status == "suggest":
+        await message.answer(t(lang, "city_did_you_mean", suggestion=value))
+        return
+    if status == "unknown":
+        await message.answer(t(lang, "city_unknown", city=value))
+        return
+
+    city = None if status == "any" else value
+
     await state.update_data(city=city)
     await state.set_state(FilterSetup.price_min)
     await message.answer(t(lang, "ask_price_min"))

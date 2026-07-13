@@ -1,5 +1,7 @@
 import asyncpg
 from db import get_pool
+import difflib
+import time
 
 CITY_ALIASES = {
     # Русский → ASCII
@@ -157,3 +159,65 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                 result.append((listing, [u["id"] for u in users]))
 
     return result
+
+CITY_ANY = {
+    "любой", "любая", "все", "всё", "любой город",
+    "будь-який", "усі", "any", "all",
+    "vse", "vše", "libovolné", "libovolne", "všechna",
+}
+
+_cities_cache = {"data": set(), "ts": 0.0}
+
+async def get_known_cities() -> set[str]:
+    """Города, по которым в базе реально есть объявления. Кэш на час."""
+    now = time.time()
+    if _cities_cache["data"] and now - _cities_cache["ts"] < 3600:
+        return _cities_cache["data"]
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT city FROM listings WHERE city IS NOT NULL AND city <> ''"
+        )
+
+    cities = {r["city"].lower().strip() for r in rows}
+    cities |= set(CITY_ALIASES.values())  # чтобы новые города не проваливались на пустой базе
+
+    _cities_cache["data"] = cities
+    _cities_cache["ts"] = now
+    return cities
+
+
+async def validate_city(text: str) -> tuple[str, str | None]:
+    """
+    Возвращает (status, value):
+      ("any", None)          — пользователь хочет все города
+      ("invalid", None)      — мусор: цифры, символы, команда
+      ("ok", city)           — город найден
+      ("suggest", city)      — не найден, но есть похожий
+      ("unknown", raw)       — не найден и похожих нет
+    """
+    raw = (text or "").strip()
+
+    if not raw or raw.startswith("/"):
+        return ("invalid", None)
+    if raw.lower() in CITY_ANY:
+        return ("any", None)
+    if raw.isdigit() or len(raw) < 2 or not any(ch.isalpha() for ch in raw):
+        return ("invalid", None)
+
+    city = normalize_city(raw)
+    known = await get_known_cities()
+
+    # Brno совпадает с "brno - řečkovice", "brno-střed" и т.д.
+    for k in known:
+        if city == k or city in k or k in city:
+            return ("ok", city)
+
+    # Похожий город: brnoo → brno, prga → praha
+    base = {k.split(" - ")[0].split(",")[0].strip() for k in known}
+    match = difflib.get_close_matches(city, base, n=1, cutoff=0.72)
+    if match:
+        return ("suggest", match[0].title())
+
+    return ("unknown", raw)
