@@ -33,6 +33,21 @@ TEXTS = {
         "share_button": "🔥 Рассказать другу",
         "feedback_button": "💬 Связь с автором",
         "remind_filter": "👋 Эй, не забудь настроить фильтр!\n\nБез него уведомления не придут.\nПросто напиши /filter и укажи город и цену — займёт 30 секунд.",
+        "help": (
+            "📌 Команды RealtyKelev Bot:\n\n"
+            "/filter — настроить фильтр (город, цена, тип)\n"
+            "/myfilter — показать текущий фильтр\n"
+            "/digest — объявления из базы по фильтру\n"
+            "/stop — остановить уведомления\n"
+            "/feedback — написать мне напрямую\n"
+            "/cancel — отменить текущее действие\n"
+            "/help — это сообщение\n\n"
+            "⚡️ Как работает: каждые 10 секунд проверяю новые объявления на 13 чешских сайтах "
+            "и шлю ссылку, как только появится что-то под твой фильтр.\n\n"
+            "⚠️ Квартиры я не ищу вручную и на «а есть что-нибудь?» не отвечаю — это делает фильтр."
+        ),
+        "cancelled": "❌ Отменено.",
+        "nothing_to_cancel": "Нечего отменять.",
     },
     "cs": {
         "choose_language": "👋 Ahoj! Vyber si jazyk:",
@@ -68,6 +83,21 @@ TEXTS = {
         "share_button": "🔥 Doporučit příteli",
         "feedback_button": "💬 Kontakt s autorem",
         "remind_filter": "👋 Hej, nezapomeň nastavit filtr!\n\nBez něj upozornění nepřijdou.\nNapiš /filter a zadej město a cenu — zabere to 30 sekund.",
+        "help": (
+            "📌 Příkazy RealtyKelev Bot:\n\n"
+            "/filter — nastavit filtr (město, cena, typ)\n"
+            "/myfilter — zobrazit aktuální filtr\n"
+            "/digest — inzeráty z databáze podle filtru\n"
+            "/stop — zastavit upozornění\n"
+            "/feedback — napsat mi přímo\n"
+            "/cancel — zrušit aktuální akci\n"
+            "/help — tato zpráva\n\n"
+            "⚡️ Jak to funguje: každých 10 sekund kontroluji nové inzeráty na 13 českých webech "
+            "a jakmile se objeví něco podle tvého filtru, pošlu odkaz.\n\n"
+            "⚠️ Byty nehledám ručně a na „máš něco?“ neodpovídám — to dělá filtr."
+        ),
+        "cancelled": "❌ Zrušeno.",
+        "nothing_to_cancel": "Není co rušit.",
     },
 }
 

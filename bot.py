@@ -127,6 +127,26 @@ async def open_feedback(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(text)
     await callback.answer()               
 
+# --- /help ---
+@dp.message(Command("help"))
+async def cmd_help(message: Message):
+    lang = await get_user_lang(message.from_user.id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(lang, "feedback_button"), callback_data="open_feedback")]
+    ])
+    await message.answer(t(lang, "help"), reply_markup=kb)
+
+
+# --- /cancel ---
+@dp.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    lang = await get_user_lang(message.from_user.id)
+    if await state.get_state() is None:
+        await message.answer(t(lang, "nothing_to_cancel"))
+        return
+    await state.clear()
+    await message.answer(t(lang, "cancelled"), reply_markup=ReplyKeyboardRemove())
+
 # --- /filter ---
 @dp.message(Command("filter"))
 async def cmd_filter(message: Message, state: FSMContext):
@@ -204,12 +224,11 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
     if not listings:
         return
 
+    warning = "📦 Вот что уже есть в базе по твоему фильтру. Свежесть не гарантирую:\n\n" if lang == "ru" else "📦 Toto je již v databázi podle tvého filtru. Aktuálnost neručím:\n\n"
+    text = warning
     for l in listings:
         text += f"🏠 {l['property_type']}\n📍 {l['title']}\n💰 {l['price']:,} Kč\n🔗 {l['url']}\n\n"
 
-    warning = "📦 Вот что уже есть в базе по твоему фильтру. Свежесть не гарантирую:\n\n" if lang == "ru" else "📦 Toto je již v databázi podle tvého filtru. Aktuálnost neručím:\n\n"
-    text = warning
-        
     try:
         await bot.send_message(user_id, text)
     except Exception as e:
