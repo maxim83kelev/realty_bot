@@ -28,6 +28,29 @@ async def is_banned(user_id: int) -> bool:
         row = await conn.fetchrow("SELECT user_id FROM banned_users WHERE user_id = $1", user_id)
     return row is not None
 
+PROP_TYPE_KEYS = {
+    "Pronájem bytu": "type_flat",
+    "Комната/подселение": "type_room",
+    "Pronájem domu": "type_house",
+}
+
+def format_price(lang: str, pmin, pmax) -> str:
+    if pmin and pmax:
+        return t(lang, "price_range", min=pmin, max=pmax)
+    if pmin:
+        return t(lang, "price_from", min=pmin)
+    if pmax:
+        return t(lang, "price_to", max=pmax)
+    return t(lang, "price_any")
+
+def format_city(lang: str, city) -> str:
+    return city.title() if city else t(lang, "any")
+
+def format_type(lang: str, prop_type) -> str:
+    if not prop_type:
+        return t(lang, "any_type")
+    key = PROP_TYPE_KEYS.get(prop_type)
+    return t(lang, key) if key else prop_type
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -284,13 +307,11 @@ async def filter_property_type(message: Message, state: FSMContext):
 
     await state.clear()
 
-    city_str = data.get("city") or t(lang, "any")
-    price_min_str = data.get("price_min") or "—"
-    price_max_str = data.get("price_max") or "—"
-    type_str = prop_type or t(lang, "any_type")
-
     await message.answer(
-        t(lang, "filter_saved", city=city_str, price_min=price_min_str, price_max=price_max_str, type=type_str),
+        t(lang, "filter_saved",
+          city=format_city(lang, data.get("city")),
+          price=format_price(lang, data.get("price_min"), data.get("price_max")),
+          type=format_type(lang, prop_type)),
         reply_markup=ReplyKeyboardRemove()
     )
     # Сразу после сохранения фильтра — шлём дайджест из базы
@@ -310,10 +331,9 @@ async def cmd_myfilter(message: Message):
 
     await message.answer(
         t(lang, "your_filter",
-          city=f['city'] or t(lang, "any"),
-          price_min=f['price_min'] or '—',
-          price_max=f['price_max'] or '—',
-          type=f['property_type'] or t(lang, "any_type"))
+          city=format_city(lang, f['city']),
+          price=format_price(lang, f['price_min'], f['price_max']),
+          type=format_type(lang, f['property_type']))
     )
 
 #--- Объявления из базы по моему фильтру

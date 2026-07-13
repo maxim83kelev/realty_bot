@@ -40,8 +40,12 @@ TEXTS = {
         "price_max_less_than_min": "⚠️ Максимум ({price_min} Kč) меньше минимума. Ты точно не перепутал местами? Введи цену больше {price_min}.",
 
         # --- Фильтр ---
-        "filter_saved": "✅ Фильтр сохранён:\n\n🏙 Город: {city}\n💰 Цена: {price_min} — {price_max} Kč\n🏠 Тип: {type}\n\nЖди уведомлений!",
-        "your_filter": "📋 Твой фильтр:\n\n🏙 Город: {city}\n💰 Цена: {price_min} — {price_max} Kč\n🏠 Тип: {type}",
+        "filter_saved": "✅ Фильтр сохранён:\n\n🏙 Город: {city}\n💰 Цена: {price}\n🏠 Тип: {type}\n\nЖди уведомлений!",
+        "your_filter": "📋 Твой фильтр:\n\n🏙 Город: {city}\n💰 Цена: {price}\n🏠 Тип: {type}",
+        "price_range": "от {min:,} до {max:,} Kč",
+        "price_from": "от {min:,} Kč",
+        "price_to": "до {max:,} Kč",
+        "price_any": "любая",
         "no_filter": "У тебя нет активного фильтра. Настрой через /filter",
         "any": "любой",
         "any_type": "всё подряд",
@@ -108,8 +112,12 @@ TEXTS = {
         "price_max_less_than_min": "⚠️ Maximum ({price_min} Kč) je nižší než minimum. Nespletl sis to? Zadej cenu vyšší než {price_min}.",
 
         # --- Filtr ---
-        "filter_saved": "✅ Filtr uložen:\n\n🏙 Město: {city}\n💰 Cena: {price_min} — {price_max} Kč\n🏠 Typ: {type}\n\nČekej na upozornění!",
-        "your_filter": "📋 Tvůj filtr:\n\n🏙 Město: {city}\n💰 Cena: {price_min} — {price_max} Kč\n🏠 Typ: {type}",
+        "filter_saved": "✅ Filtr uložen:\n\n🏙 Město: {city}\n💰 Cena: {price}\n🏠 Typ: {type}\n\nČekej na upozornění!",
+        "your_filter": "📋 Tvůj filtr:\n\n🏙 Město: {city}\n💰 Cena: {price}\n🏠 Typ: {type}",
+        "price_range": "od {min:,} do {max:,} Kč",
+        "price_from": "od {min:,} Kč",
+        "price_to": "do {max:,} Kč",
+        "price_any": "libovolná",
         "no_filter": "Nemáš aktivní filtr. Nastav přes /filter",
         "any": "libovolné",
         "any_type": "vše",
