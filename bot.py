@@ -280,6 +280,7 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
                 AND ($3::int IS NULL OR price <= $3)
                 AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
                 AND price > 0
+                AND city IS NOT NULL AND city <> ''
             ORDER BY created_at DESC
             LIMIT 5
         """, normalize_city(city or ""), price_min, price_max, prop_type)
@@ -375,6 +376,7 @@ async def cmd_digest(message: Message):
                 AND ($3::int IS NULL OR price <= $3)
                 AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
                 AND price > 0
+                AND city IS NOT NULL AND city <> ''
             ORDER BY created_at DESC
             LIMIT 10
         """, f['city'], f['price_min'], f['price_max'], f['property_type'])
