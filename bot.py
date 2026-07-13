@@ -172,26 +172,50 @@ async def filter_city(message: Message, state: FSMContext):
     await state.set_state(FilterSetup.price_min)
     await message.answer(t(lang, "ask_price_min"))
 
+MAX_PRICE = 200_000  # верхняя граница здравого смысла, Kč/мес
+
 @dp.message(FilterSetup.price_min)
 async def filter_price_min(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    try:
-        price_min = int("".join(filter(str.isdigit, message.text)))
-    except:
-        price_min = 0
+    raw = "".join(filter(str.isdigit, message.text or ""))
+
+    if not raw:
+        await message.answer(t(lang, "price_not_a_number"))
+        return
+
+    price_min = int(raw)
+
+    if price_min > MAX_PRICE:
+        await message.answer(t(lang, "price_too_high", max=MAX_PRICE))
+        return
+
     await state.update_data(price_min=price_min if price_min > 0 else None)
     await state.set_state(FilterSetup.price_max)
     await message.answer(t(lang, "ask_price_max"))
+
 
 @dp.message(FilterSetup.price_max)
 async def filter_price_max(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    try:
-        price_max = int("".join(filter(str.isdigit, message.text)))
-    except:
-        price_max = 0
+    raw = "".join(filter(str.isdigit, message.text or ""))
+
+    if not raw:
+        await message.answer(t(lang, "price_not_a_number"))
+        return
+
+    price_max = int(raw)
+
+    if price_max > MAX_PRICE:
+        await message.answer(t(lang, "price_too_high", max=MAX_PRICE))
+        return
+
+    price_min = data.get("price_min")
+    if price_max > 0 and price_min and price_max < price_min:
+        await message.answer(t(lang, "price_max_less_than_min", price_min=price_min))
+        return
+
     await state.update_data(price_max=price_max if price_max > 0 else None)
     await state.set_state(FilterSetup.property_type)
 
