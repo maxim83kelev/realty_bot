@@ -173,6 +173,30 @@ CITY_ANY = {
 
 _cities_cache = {"data": set(), "ts": 0.0}
 
+async def get_price_median(city: str | None, prop_type: str | None) -> int | None:
+    """Медиана цены по городу и типу. None, если данных мало (<5 объявлений)."""
+    if not city:
+        return None
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS median,
+                COUNT(*) AS n
+            FROM listings
+            WHERE city = $1
+              AND price > 0
+              AND ($2::text IS NULL OR property_type = $2)
+            """,
+            city, prop_type,
+        )
+
+    if not row or row["n"] < 5:
+        return None
+    return int(row["median"])
+
 async def get_known_cities() -> set[str]:
     """Города, по которым в базе реально есть объявления. Кэш на час."""
     now = time.time()

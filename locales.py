@@ -38,6 +38,9 @@ TEXTS = {
         "price_not_a_number": "⚠️ Введи число, например: 15000 (или 0 — без ограничений).",
         "price_too_high": "🤨 {price:,} Kč в месяц? Ты ебанулся или это вилла с прислугой?\nАренда в Чехии — до {max:,} Kč. Введи реальную цену.",
         "price_too_low": "🤨 {price:,} Kč в месяц — это цена кофе, а не квартиры.\nМинимум {min:,} Kč. Или напиши 0, если без ограничений.",
+        "price_sanity": "🤔 {price:,} Kč? По базе средняя цена тут около {median:,} Kč. Точно не перепутал?",
+        "price_confirm_yes": "✅ Да, всё верно",
+        "price_confirm_no": "✏️ Ввести заново",
         # --- Фильтр ---
         "filter_saved": "✅ Фильтр сохранён:\n\n🏙 Город: {city}\n💰 Цена: {price}\n🏠 Тип: {type}\n\nЖди уведомлений!",
         "your_filter": "📋 Твой фильтр:\n\n🏙 Город: {city}\n💰 Цена: {price}\n🏠 Тип: {type}",
@@ -109,6 +112,9 @@ TEXTS = {
         "price_not_a_number": "⚠️ Zadej číslo, například: 15000 (nebo 0 — bez omezení).",
         "price_too_high": "🤨 {price:,} Kč měsíčně? To už není nájem, to je vila se služebnictvem.\nNájem v ČR je do {max:,} Kč. Zadej reálnou cenu.",
         "price_too_low": "🤨 {price:,} Kč měsíčně — to je cena kávy, ne bytu.\nMinimum je {min:,} Kč. Nebo napiš 0, pokud bez omezení.",
+        "price_sanity": "🤔 {price:,} Kč? Podle databáze je průměrná cena tady kolem {median:,} Kč. Nespletl sis to?",
+        "price_confirm_yes": "✅ Ano, je to správně",
+        "price_confirm_no": "✏️ Zadat znovu",
 
         # --- Filtr ---
         "filter_saved": "✅ Filtr uložen:\n\n🏙 Město: {city}\n💰 Cena: {price}\n🏠 Typ: {type}\n\nČekej na upozornění!",

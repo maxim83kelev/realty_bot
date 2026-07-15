@@ -10,7 +10,7 @@ from db import get_pool
 from locales import t
 from aiogram.types import CallbackQuery
 from matcher import normalize_city
-from matcher import normalize_city, validate_city
+from matcher import normalize_city, validate_city, get_price_median
 
 
 import asyncio
@@ -255,6 +255,21 @@ async def filter_price_max(message: Message, state: FSMContext):
         await message.answer(t(lang, "price_max_less_than_min", price_min=price_min))
         return
 
+    # sanity-check по медиане из своей базы
+    if price_max and price_max >= MIN_PRICE:
+        median = await get_price_median(data.get("city"), None)
+        if median and price_max > median * 3:
+            await state.update_data(pending_price_max=price_max)
+            kb = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text=t(lang, "price_confirm_yes"), callback_data="price_ok"),
+                InlineKeyboardButton(text=t(lang, "price_confirm_no"), callback_data="price_redo"),
+            ]])
+            await message.answer(t(lang, "price_sanity", price=price_max, median=median), reply_markup=kb)
+            return
+
+    await _save_price_max_and_continue(message, state, price_max, lang)
+    
+async def _save_price_max_and_continue(message, state, price_max, lang):
     await state.update_data(price_max=price_max if price_max > 0 else None)
     await state.set_state(FilterSetup.property_type)
 
@@ -266,6 +281,24 @@ async def filter_price_max(message: Message, state: FSMContext):
     ], resize_keyboard=True, one_time_keyboard=True)
 
     await message.answer(t(lang, "ask_property_type"), reply_markup=kb)
+    
+@dp.callback_query(F.data == "price_ok")
+async def price_confirm_ok(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    price_max = data.get("pending_price_max")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await _save_price_max_and_continue(cb.message, state, price_max, lang)
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "price_redo")
+async def price_confirm_redo(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "ask_price_max"))
+    await cb.answer()
 
 async def send_initial_digest(user_id: int, city: str, price_min, price_max, prop_type: str, lang: str):
     await asyncio.sleep(2)  # небольшая пауза чтобы фильтр точно сохранился
