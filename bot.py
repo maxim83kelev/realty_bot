@@ -278,6 +278,11 @@ async def finish_edit(message, state, lang):
           type=format_type(lang, data.get("property_type"))),
         reply_markup=kb
     )
+    # дайджест по обновлённому фильтру
+    asyncio.create_task(send_initial_digest(
+        message.chat.id, data.get("city"),
+        data.get("price_min"), data.get("price_max"),
+        data.get("property_type"), lang))
     
     
 async def _save_price_min_and_continue(message, state, price_min, lang):
