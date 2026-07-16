@@ -347,9 +347,15 @@ async def filter_property_type(message: Message, state: FSMContext):
     elif "подряд" in text or "Vše" in text or "Všechno" in text:
         prop_type = None
     else:
-        await message.answer(t(lang, "type_use_buttons"))
+        kb = ReplyKeyboardMarkup(keyboard=[
+            [KeyboardButton(text=t(lang, "type_flat"))],
+            [KeyboardButton(text=t(lang, "type_room"))],
+            [KeyboardButton(text=t(lang, "type_house"))],
+            [KeyboardButton(text=t(lang, "type_any"))],
+        ], resize_keyboard=True, one_time_keyboard=True)
+        await message.answer(t(lang, "type_use_buttons"), reply_markup=kb)
         return
-
+    
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.from_user.id)
