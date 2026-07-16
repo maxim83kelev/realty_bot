@@ -225,9 +225,44 @@ async def filter_price_min(message: Message, state: FSMContext):
         await message.answer(t(lang, "price_too_low", price=price_min, min=MIN_PRICE))
         return
 
+    # sanity-check по медиане из своей базы
+    if price_min and price_min >= MIN_PRICE:
+        median = await get_price_median(data.get("city"), None)
+        if median and price_min > median * 3:
+            await state.update_data(pending_price_min=price_min)
+            kb = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text=t(lang, "price_confirm_yes"), callback_data="price_min_ok"),
+                InlineKeyboardButton(text=t(lang, "price_confirm_no"), callback_data="price_min_redo"),
+            ]])
+            await message.answer(t(lang, "price_sanity", price=price_min, median=median), reply_markup=kb)
+            return
+
+    await _save_price_min_and_continue(message, state, price_min, lang)
+    
+    
+async def _save_price_min_and_continue(message, state, price_min, lang):
     await state.update_data(price_min=price_min if price_min > 0 else None)
     await state.set_state(FilterSetup.price_max)
     await message.answer(t(lang, "ask_price_max"))
+
+
+@dp.callback_query(F.data == "price_min_ok")
+async def price_min_confirm_ok(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    price_min = data.get("pending_price_min")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await _save_price_min_and_continue(cb.message, state, price_min, lang)
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "price_min_redo")
+async def price_min_confirm_redo(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "ask_price_min"))
+    await cb.answer()
 
 
 @dp.message(FilterSetup.price_max)
