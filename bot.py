@@ -11,6 +11,7 @@ from locales import t
 from aiogram.types import CallbackQuery
 from matcher import normalize_city
 from matcher import normalize_city, validate_city, get_price_median
+from urllib.parse import quote
 
 
 import asyncio
@@ -700,35 +701,55 @@ async def cmd_admin_users(message: Message):
 @dp.message(Command("abroadcast"))
 async def cmd_broadcast(message: Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("⛔ Нет доступа.")
+        await message.answer("⛔️ Нет доступа.")
         return
     await state.set_state(FilterSetup.broadcast)
-    await message.answer("📢 Введи текст рассылки:")
+    await message.answer(
+        "📢 Введи текст рассылки.\n\n"
+        "Формат: русский текст, потом строка «---», потом чешский.\n"
+        "Если «---» нет — всем уйдёт один текст (русский)."
+    )
+
 
 @dp.message(FilterSetup.broadcast)
 async def do_broadcast(message: Message, state: FSMContext):
     await state.clear()
+
+    parts = message.text.split("---", 1)
+    text_ru = parts[0].strip()
+    text_cs = parts[1].strip() if len(parts) > 1 else text_ru
+
+    texts = {"ru": text_ru, "cs": text_cs}
+
+    def make_kb(lang: str) -> InlineKeyboardMarkup:
+        if lang == "cs":
+            share_text = "Bot, který najde byty dřív než ostatní v Česku"
+            share_btn, author_btn = "🔥 Doporučit příteli", "💬 Kontakt s autorem"
+        else:
+            share_text = "Бот который находит квартиры раньше всех в Чехии"
+            share_btn, author_btn = "🔥 Рассказать другу", "💬 Связь с автором"
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=share_btn,
+                url=f"https://t.me/share/url?url=t.me/realty_kelev_bot&text={quote(share_text)}")],
+            [InlineKeyboardButton(text=author_btn, callback_data="open_feedback")],
+        ])
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         users = await conn.fetch("SELECT id, language FROM users")
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="🔥 Рассказать другу",
-            url="https://t.me/share/url?url=t.me/realty_kelev_bot&text=Бот%20который%20находит%20квартиры%20раньше%20всех%20в%20Чехии"
-        )],
-        [InlineKeyboardButton(text="💬 Связь с автором", callback_data="open_feedback")]
-    ])
-
-    sent = 0
+    sent, failed = 0, 0
     for u in users:
+        lang = u["language"] if u["language"] in texts else "ru"
         try:
-            await bot.send_message(u['id'], f"📢 {message.text}", reply_markup=kb)
+            await bot.send_message(u["id"], f"📢 {texts[lang]}", reply_markup=make_kb(lang))
             sent += 1
-        except:
-            pass
+        except Exception as e:
+            failed += 1
+            print(f"[Broadcast] {u['id']}: {e}")
+        await asyncio.sleep(0.05)
 
-    await message.answer(f"✅ Отправлено {sent} пользователям.")
+    await message.answer(f"✅ Отправлено: {sent}\n❌ Не дошло: {failed}")
 
 
 @dp.message(Command("aclear"))
