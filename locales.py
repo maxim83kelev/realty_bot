@@ -28,6 +28,7 @@ TEXTS = {
         "type_room": "🛏 Комната / подселение",
         "type_house": "🏡 Дом",
         "type_any": "🔍 Всё подряд",
+        "type_use_buttons": "👇 Выбери тип кнопкой ниже, а не текстом.",
 
         # --- Валидация города ---
         "city_not_valid": "⚠️ Это не похоже на город. Введи название, например: Brno, Praha, Ostrava\nИли напиши «любой» — буду слать из всех городов.",
@@ -102,6 +103,7 @@ TEXTS = {
         "type_room": "🛏 Pokoj / spolubydlení",
         "type_house": "🏡 Dům",
         "type_any": "🔍 Vše",
+        "type_use_buttons": "👇 Vyber typ tlačítkem níže, ne textem.",
 
         # --- Validace města ---
         "city_not_valid": "⚠️ Tohle nevypadá jako město. Zadej název, např.: Brno, Praha, Ostrava\nNebo napiš „libovolné“ — budu posílat ze všech měst.",

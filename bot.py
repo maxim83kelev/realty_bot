@@ -336,7 +336,7 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
 async def filter_property_type(message: Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get("lang", "ru")
-    text = message.text.strip()
+    text = (message.text or "").strip()
 
     if "Квартира" in text or "Byt" in text:
         prop_type = "Pronájem bytu"
@@ -344,8 +344,11 @@ async def filter_property_type(message: Message, state: FSMContext):
         prop_type = "Комната/подселение"
     elif "Дом" in text or "Dům" in text:
         prop_type = "Pronájem domu"
-    else:
+    elif "подряд" in text or "Vše" in text or "Všechno" in text:
         prop_type = None
+    else:
+        await message.answer(t(lang, "type_use_buttons"))
+        return
 
     pool = await get_pool()
     async with pool.acquire() as conn:
