@@ -65,6 +65,10 @@ class FilterSetup(StatesGroup):
     broadcast = State()
     feedback = State()
     reply = State()
+    edit_city = State()
+    edit_price_min = State()
+    edit_price_max = State()
+    edit_property_type = State()
 
 @dp.message.outer_middleware()
 async def ban_check_middleware(handler, event, data):
@@ -199,6 +203,11 @@ async def filter_city(message: Message, state: FSMContext):
     city = None if status == "any" else value
 
     await state.update_data(city=city)
+
+    if (await state.get_data()).get("edit_mode"):
+        await finish_edit(message, state, lang)
+        return
+
     await state.set_state(FilterSetup.price_min)
     await message.answer(t(lang, "ask_price_min"))
 
@@ -240,8 +249,45 @@ async def filter_price_min(message: Message, state: FSMContext):
     await _save_price_min_and_continue(message, state, price_min, lang)
     
     
+async def save_filter_to_db(user_id, data):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM user_filters WHERE user_id = $1", user_id)
+        await conn.execute("""
+            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
+            VALUES ($1, $2, $3, $4, $5)
+        """, user_id,
+            normalize_city(data.get("city") or ""),
+            data.get("price_min"), data.get("price_max"),
+            data.get("property_type"))
+
+
+async def finish_edit(message, state, lang):
+    data = await state.get_data()
+    await save_filter_to_db(message.chat.id, data)
+    await state.clear()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(lang, "edit_city_btn"), callback_data="edit_city")],
+        [InlineKeyboardButton(text=t(lang, "edit_price_btn"), callback_data="edit_price")],
+        [InlineKeyboardButton(text=t(lang, "edit_type_btn"), callback_data="edit_type")],
+    ])
+    await message.answer(
+        t(lang, "filter_updated",
+          city=format_city(lang, data.get("city")),
+          price=format_price(lang, data.get("price_min"), data.get("price_max")),
+          type=format_type(lang, data.get("property_type"))),
+        reply_markup=kb
+    )
+    
+    
 async def _save_price_min_and_continue(message, state, price_min, lang):
     await state.update_data(price_min=price_min if price_min > 0 else None)
+
+    if (await state.get_data()).get("edit_mode"):
+        await state.set_state(FilterSetup.price_max)
+        await message.answer(t(lang, "ask_price_max"))
+        return
+
     await state.set_state(FilterSetup.price_max)
     await message.answer(t(lang, "ask_price_max"))
 
@@ -306,6 +352,11 @@ async def filter_price_max(message: Message, state: FSMContext):
     
 async def _save_price_max_and_continue(message, state, price_max, lang):
     await state.update_data(price_max=price_max if price_max > 0 else None)
+
+    if (await state.get_data()).get("edit_mode"):
+        await finish_edit(message, state, lang)
+        return
+
     await state.set_state(FilterSetup.property_type)
 
     kb = ReplyKeyboardMarkup(keyboard=[
@@ -391,6 +442,12 @@ async def filter_property_type(message: Message, state: FSMContext):
         await message.answer(t(lang, "type_use_buttons"), reply_markup=kb)
         return
     
+    await state.update_data(property_type=prop_type)
+
+    if data.get("edit_mode"):
+        await finish_edit(message, state, lang)
+        return
+    
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.from_user.id)
@@ -423,12 +480,72 @@ async def cmd_myfilter(message: Message):
         await message.answer(t(lang, "no_filter"))
         return
 
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(lang, "edit_city_btn"), callback_data="edit_city")],
+        [InlineKeyboardButton(text=t(lang, "edit_price_btn"), callback_data="edit_price")],
+        [InlineKeyboardButton(text=t(lang, "edit_type_btn"), callback_data="edit_type")],
+    ])
     await message.answer(
         t(lang, "your_filter",
           city=format_city(lang, f['city']),
           price=format_price(lang, f['price_min'], f['price_max']),
-          type=format_type(lang, f['property_type']))
+          type=format_type(lang, f['property_type'])),
+        reply_markup=kb
     )
+    
+@dp.callback_query(F.data == "edit_city")
+async def edit_city_start(cb: CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(cb.from_user.id)
+    await state.update_data(lang=lang, edit_mode=True)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
+    if f:
+        await state.update_data(city=f["city"], price_min=f["price_min"],
+                                price_max=f["price_max"], property_type=f["property_type"])
+    await state.set_state(FilterSetup.city)
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "ask_city"))
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "edit_price")
+async def edit_price_start(cb: CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(cb.from_user.id)
+    await state.update_data(lang=lang, edit_mode=True)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
+    if f:
+        await state.update_data(city=f["city"], price_min=f["price_min"],
+                                price_max=f["price_max"], property_type=f["property_type"])
+    await state.set_state(FilterSetup.price_min)
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "ask_price_min"))
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "edit_type")
+async def edit_type_start(cb: CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(cb.from_user.id)
+    await state.update_data(lang=lang, edit_mode=True)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
+    if f:
+        await state.update_data(city=f["city"], price_min=f["price_min"],
+                                price_max=f["price_max"], property_type=f["property_type"])
+    await state.set_state(FilterSetup.property_type)
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text=t(lang, "type_flat"))],
+        [KeyboardButton(text=t(lang, "type_room"))],
+        [KeyboardButton(text=t(lang, "type_house"))],
+        [KeyboardButton(text=t(lang, "type_any"))],
+    ], resize_keyboard=True, one_time_keyboard=True)
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "ask_property_type"), reply_markup=kb)
+    await cb.answer()    
+    
 
 #--- Объявления из базы по моему фильтру
 @dp.message(Command("digest"))

@@ -29,6 +29,10 @@ TEXTS = {
         "type_house": "🏡 Дом",
         "type_any": "🔍 Всё подряд",
         "type_use_buttons": "👇 Выбери тип кнопкой ниже. Если кнопок не видно — нажми значок ▦ справа от поля ввода.",
+        "edit_city_btn": "🏙 Изменить город",
+        "edit_price_btn": "💰 Изменить цену",
+        "edit_type_btn": "🏠 Изменить тип",
+        "filter_updated": "✅ Фильтр обновлён:\n\n🏙 Город: {city}\n💰 Цена: {price}\n🏠 Тип: {type}",
 
         # --- Валидация города ---
         "city_not_valid": "⚠️ Это не похоже на город. Введи название, например: Brno, Praha, Ostrava\nИли напиши «любой» — буду слать из всех городов.",
@@ -104,6 +108,10 @@ TEXTS = {
         "type_house": "🏡 Dům",
         "type_any": "🔍 Vše",
         "type_use_buttons": "👇 Vyber typ tlačítkem níže. Pokud tlačítka nevidíš — klikni na ikonu ▦ vpravo od pole pro zadávání.",
+        "edit_city_btn": "🏙 Změnit město",
+        "edit_price_btn": "💰 Změnit cenu",
+        "edit_type_btn": "🏠 Změnit typ",
+        "filter_updated": "✅ Filtr aktualizován:\n\n🏙 Město: {city}\n💰 Cena: {price}\n🏠 Typ: {type}",
 
         # --- Validace města ---
         "city_not_valid": "⚠️ Tohle nevypadá jako město. Zadej název, např.: Brno, Praha, Ostrava\nNebo napiš „libovolné“ — budu posílat ze všech měst.",
