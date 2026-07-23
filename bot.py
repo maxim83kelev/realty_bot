@@ -9,7 +9,6 @@ from config import BOT_TOKEN
 from db import get_pool
 from locales import t
 from aiogram.types import CallbackQuery
-from matcher import normalize_city
 from matcher import normalize_city, validate_city, get_price_median
 from urllib.parse import quote
 
@@ -258,7 +257,7 @@ async def save_filter_to_db(user_id, data):
             INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
             VALUES ($1, $2, $3, $4, $5)
         """, user_id,
-            normalize_city(data.get("city") or ""),
+            normalize_city(data.get("city")) if data.get("city") else None,
             data.get("price_min"), data.get("price_max"),
             data.get("property_type"))
 
@@ -408,7 +407,7 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
                 AND city IS NOT NULL AND city <> ''
             ORDER BY created_at DESC
             LIMIT 5
-        """, normalize_city(city or ""), price_min, price_max, prop_type)
+        """, normalize_city(city) if city else None, price_min, price_max, prop_type)
 
     if not listings:
         return
@@ -460,7 +459,7 @@ async def filter_property_type(message: Message, state: FSMContext):
         await conn.execute("""
             INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
             VALUES ($1, $2, $3, $4, $5)
-        """, message.from_user.id, normalize_city(data.get("city") or ""), data.get("price_min"), data.get("price_max"), prop_type)
+        """, message.from_user.id, normalize_city(data.get("city")) if data.get("city") else None, data.get("price_min"), data.get("price_max"), prop_type)
 
     await state.clear()
 
