@@ -655,6 +655,10 @@ async def cmd_admin(message: Message):
             ORDER BY cnt DESC 
             LIMIT 5
         """)
+        
+        any_city_count = await conn.fetchval(
+            "SELECT COUNT(*) FROM user_filters WHERE city IS NULL"
+        )
 
     cities_text = "\n".join([f"  {r['city']}: {r['cnt']}" for r in top_cities]) or "  —"
 
@@ -663,7 +667,9 @@ async def cmd_admin(message: Message):
         f"👥 Пользователей: {users_count}\n"
         f"🔔 Активных фильтров: {filters_count}\n"
         f"🏠 Объявлений в базе: {listings_count}\n\n"
-        f"🏙 Топ городов:\n{cities_text}"
+        f"🏙 Топ городов:\n{cities_text}\n"
+        f"🌍 Без фильтра города: {any_city_count}"
+    )
     )
 
 @dp.message(Command("ausers"))
