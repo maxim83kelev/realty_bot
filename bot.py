@@ -670,7 +670,6 @@ async def cmd_admin(message: Message):
         f"🏙 Топ городов:\n{cities_text}\n"
         f"🌍 Без фильтра города: {any_city_count}"
     )
-    )
 
 @dp.message(Command("ausers"))
 async def cmd_admin_users(message: Message):
