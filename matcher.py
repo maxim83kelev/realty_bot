@@ -132,8 +132,8 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
 
             # Пробуем вставить — если external_id уже есть, пропускаем
             inserted = await conn.fetchrow("""
-                INSERT INTO listings (source, external_id, title, price, city, property_type, url)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO listings (source, external_id, title, price, city, property_type, disposition, url)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (external_id) DO NOTHING
                 RETURNING id
             """,
@@ -143,6 +143,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                 listing["price"],
                 normalize_city(listing["city"]),
                 listing["property_type"],
+                listing.get("disposition"),
                 listing["url"],
             )
 
@@ -158,7 +159,8 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                     AND (f.price_min IS NULL OR $2 >= f.price_min)
                     AND (f.price_max IS NULL OR $2 <= f.price_max)
                     AND (f.property_type IS NULL OR LOWER(f.property_type) = LOWER($3))
-            """, normalize_city(listing["city"]), listing["price"], listing["property_type"])
+                    AND (f.disposition IS NULL OR f.disposition = $4)
+            """, normalize_city(listing["city"]), listing["price"], listing["property_type"], listing.get("disposition"))
 
             if users:
                 result.append((listing, [u["id"] for u in users]))

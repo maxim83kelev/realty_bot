@@ -5,6 +5,11 @@ from parser.base import BaseScraper
 BASE_URL = "https://www.bezrealitky.cz"
 LIST_URL = f"{BASE_URL}/vyhledat"
 
+import re
+
+# 1+kk, 2+1, 3+kk, 4+1 ... плюс отдельные garsoniéra / atypické
+DISPOSITION_RE = re.compile(r'\b(\d\s*\+\s*(?:kk|\d))\b', re.IGNORECASE)
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "cs-CZ,cs;q=0.9",
@@ -79,6 +84,20 @@ class BezrealitkyScraper(BaseScraper):
                     price = int("".join(filter(str.isdigit, price_raw)))
                 except:
                     pass
+                
+                # Диспозиция: 2+kk, 3+1, garsoniéra
+                disposition = None
+                for s in unique_spans:
+                    m = DISPOSITION_RE.search(s)
+                    if m:
+                        disposition = m.group(1).replace(" ", "").lower()  # "2 + kk" → "2+kk"
+                        break
+                if not disposition:
+                    for s in unique_spans:
+                        if "garson" in s.lower():
+                            disposition = "garsoniéra"
+                            break
+                
 
                 # Город из адреса: "Jeřabinová, Praha - Smíchov" → "Praha"
                 city = ""
@@ -102,6 +121,7 @@ class BezrealitkyScraper(BaseScraper):
                     "title": address,
                     "price": price,
                     "city": city,
+                    "disposition": disposition,
                     "property_type": prop_type,
                     "url": href if href.startswith("http") else f"{BASE_URL}{href}",
                 })

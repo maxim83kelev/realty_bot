@@ -46,5 +46,13 @@ async def create_tables():
             );
         """)
 
+        # Миграция: добавляем disposition к уже существующим таблицам.
+        # CREATE TABLE IF NOT EXISTS выше не тронет таблицы, которые уже есть,
+        # поэтому колонку добавляем отдельно через ALTER.
+        await conn.execute("""
+            ALTER TABLE listings ADD COLUMN IF NOT EXISTS disposition TEXT;
+            ALTER TABLE user_filters ADD COLUMN IF NOT EXISTS disposition TEXT;
+        """)
+
 async def get_pool():
     return pool
