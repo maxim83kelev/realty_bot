@@ -6,6 +6,8 @@ from parser.base import BaseScraper
 BASE_URL = "https://www.dumrealit.cz"
 LIST_URL = f"{BASE_URL}/nemovitosti/pronajem/byt/razeni-nejnovejsi"
 
+DISPOSITION_RE = re.compile(r'\b(\d\s*\+\s*(?:kk|\d))\b', re.IGNORECASE)
+
 class DumrealiScraper(BaseScraper):
     source_name = "dumrealit"
 
@@ -63,6 +65,14 @@ class DumrealiScraper(BaseScraper):
                 except:
                     pass
 
+                # Диспозиция из заголовка h3: "Pronájem bytu 2+kk 48 m²" → "2+kk"
+                disposition = None
+                m = DISPOSITION_RE.search(title)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
                 results.append({
                     "external_id": f"dumrealit_{external_id}",
                     "source": self.source_name,
@@ -70,6 +80,7 @@ class DumrealiScraper(BaseScraper):
                     "price": price,
                     "city": city,
                     "property_type": "Pronájem bytu",
+                    "disposition": disposition,
                     "url": url,
                 })
 
