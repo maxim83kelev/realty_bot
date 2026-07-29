@@ -116,6 +116,7 @@ class EspolubydleniScraper(BaseScraper):
                                 "price": price,
                                 "city": city,
                                 "property_type": "Комната/подселение",
+                                "disposition": None,
                                 "url": url_listing,
                             })
                             i += 2
