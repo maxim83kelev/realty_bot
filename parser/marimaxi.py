@@ -2,8 +2,12 @@ import httpx
 from bs4 import BeautifulSoup
 from parser.base import BaseScraper
 
+import re
+
 BASE_URL = "https://marimaxi.cz"
 LIST_URL = f"{BASE_URL}/o/PR00"
+
+DISPOSITION_RE = re.compile(r'\b(\d\s*\+\s*(?:kk|\d))\b', re.IGNORECASE)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -53,6 +57,14 @@ class MarimaxiScraper(BaseScraper):
                 except:
                     pass
 
+                # Диспозиция из заголовка
+                disposition = None
+                m = DISPOSITION_RE.search(title)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
                 results.append({
                     "external_id": f"marimaxi_{id_text}",
                     "source": self.source_name,
@@ -60,6 +72,7 @@ class MarimaxiScraper(BaseScraper):
                     "price": price,
                     "city": "Praha",
                     "property_type": "Pronájem bytu",
+                    "disposition": disposition,
                     "url": url,
                 })
 
