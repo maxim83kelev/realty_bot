@@ -2,9 +2,12 @@ import httpx
 from bs4 import BeautifulSoup
 from parser.base import BaseScraper
 
+import re
+
 BASE_URL = "https://jiho.moravskereality.cz"
 LIST_URL = f"{BASE_URL}/pronajem/byty/"
 
+DISPOSITION_RE = re.compile(r'\b(\d\s*\+\s*(?:kk|\d))\b', re.IGNORECASE)
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "cs-CZ,cs;q=0.9",
@@ -57,13 +60,31 @@ class JihomoravskerealityScraper(BaseScraper):
                     if parts:
                         city = parts[-1]
 
+                # Диспозиция из заголовка
+                disposition = None
+                m = DISPOSITION_RE.search(title)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
+                # Тип: если в заголовке "pokoje" — это комната, а не квартира
+                low = title.lower()
+                if "pokoj" in low:
+                    prop_type = "Комната/подселение"
+                elif "dům" in low or "domu" in low:
+                    prop_type = "Pronájem domu"
+                else:
+                    prop_type = "Pronájem bytu"
+
                 results.append({
                     "external_id": external_id,
                     "source": self.source_name,
                     "title": title,
                     "price": price,
                     "city": city,
-                    "property_type": "Pronájem bytu",
+                    "property_type": prop_type,
+                    "disposition": disposition,
                     "url": url,
                 })
 
