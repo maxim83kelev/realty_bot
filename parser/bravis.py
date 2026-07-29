@@ -2,8 +2,12 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 from parser.base import BaseScraper
 
+import re
+
 BASE_URL = "https://www.bravis.cz"
 LIST_URL = f"{BASE_URL}/pronajem-bytu"
+
+DISPOSITION_RE = re.compile(r'\b(\d\s*\+\s*(?:kk|\d))\b', re.IGNORECASE)
 
 class BravisScraper(BaseScraper):
     source_name = "bravis"
@@ -64,6 +68,14 @@ class BravisScraper(BaseScraper):
                         city = keyword
                         break
 
+                # Диспозиция из заголовка: "Pronájem bytu 2+kk, 55 m²" → "2+kk"
+                disposition = None
+                m = DISPOSITION_RE.search(title)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
                 results.append({
                     "external_id": f"bravis_{external_id}",
                     "source": self.source_name,
@@ -71,6 +83,7 @@ class BravisScraper(BaseScraper):
                     "price": price,
                     "city": city,
                     "property_type": "Pronájem bytu",
+                    "disposition": disposition,
                     "url": url,
                 })
 
