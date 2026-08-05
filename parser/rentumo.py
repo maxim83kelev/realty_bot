@@ -1,3 +1,4 @@
+import re
 import httpx
 from bs4 import BeautifulSoup
 from parser.base import BaseScraper
@@ -64,6 +65,14 @@ class RentumoScraper(BaseScraper):
                         except:
                             pass
 
+                        # rentumo даёт "2 pokoje" / "1 pokoj" — сводим к общему виду "2+kk"
+                        disposition = None
+                        rooms_tag = card.find(string=lambda s: s and "poko" in s.lower())
+                        if rooms_tag:
+                            rm = re.search(r'(\d)\s*pokoj', rooms_tag, re.IGNORECASE)
+                            if rm:
+                                disposition = f"{rm.group(1)}+kk"
+
                         results.append({
                             "external_id": f"rentumo_{external_id}",
                             "source": self.source_name,
@@ -71,6 +80,7 @@ class RentumoScraper(BaseScraper):
                             "price": price,
                             "city": city_raw.split(",")[0].strip() if "," in city_raw else city_raw,
                             "property_type": "Pronájem bytu",
+                            "disposition": disposition,
                             "url": url_listing,
                         })
 
