@@ -1,3 +1,4 @@
+import re
 import httpx
 from bs4 import BeautifulSoup
 from parser.base import BaseScraper
@@ -67,6 +68,14 @@ class SrealitkyScraper(BaseScraper):
                     city_part = address.split(",")[1].strip()
                     city = city_part.split("-")[0].strip() if "-" in city_part else city_part
 
+                # Диспозиция из заголовка: "Pronájem bytu 2+kk 52 m²" → "2+kk"
+                disposition = None
+                m = re.search(r'\b(\d\s*\+\s*(?:kk|\d))\b', title, re.IGNORECASE)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
                 results.append({
                     "external_id": external_id,
                     "source": self.source_name,
@@ -75,6 +84,7 @@ class SrealitkyScraper(BaseScraper):
                     "city": city,
                     "property_type": title,
                     "url": url,
+                    "disposition": disposition,
                 })
 
             return results
