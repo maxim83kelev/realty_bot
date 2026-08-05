@@ -54,6 +54,14 @@ class RealcityScraper(BaseScraper):
                 except:
                     pass
 
+                # Диспозиция из заголовка ссылки
+                disposition = None
+                m = re.search(r'\b(\d\s*\+\s*(?:kk|\d))\b', title, re.IGNORECASE)
+                if m:
+                    disposition = m.group(1).replace(" ", "").lower()
+                elif "garson" in title.lower():
+                    disposition = "garsoniéra"
+
                 results.append({
                     "external_id": f"realcity_{external_id}",
                     "source": self.source_name,
@@ -61,6 +69,7 @@ class RealcityScraper(BaseScraper):
                     "price": price,
                     "city": city.lower(),
                     "property_type": "Pronájem bytu",
+                    "disposition": disposition,
                     "url": url,
                 })
 
