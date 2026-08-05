@@ -18,6 +18,7 @@ query SearchOffer($purpose: OfferPurpose, $property: PropertyType, $sort: OfferS
       url
       purpose
       property
+      category
       createdAt
       price {
         total
@@ -45,6 +46,19 @@ class RealingScraper(BaseScraper):
 
     def __init__(self, params: dict = None):
         self.params = params or {}
+        
+    @staticmethod
+    def _decode_category(cat: str) -> str | None:
+        # realingo: "FLAT21" → "2+1", "FLAT1_KK" → "1+kk", "FLAT3_KK" → "3+kk"
+        if not cat or not cat.startswith("FLAT"):
+            return None
+        code = cat[4:]  # убираем "FLAT"
+        if code.endswith("_KK"):
+            num = code[:-3]
+            return f"{num}+kk" if num.isdigit() else None
+        if len(code) == 2 and code.isdigit():
+            return f"{code[0]}+{code[1]}"  # "21" → "2+1"
+        return None
 
     async def fetch_listings(self) -> list[dict]:
         try:
@@ -59,7 +73,7 @@ class RealingScraper(BaseScraper):
                     "skip": 0,
                 }
             }
-
+            
             async with httpx.AsyncClient(headers=HEADERS, timeout=15) as client:
                 resp = await client.post(GRAPHQL_URL, json=payload)
                 resp.raise_for_status()
@@ -87,6 +101,8 @@ class RealingScraper(BaseScraper):
                 # Город из addressUrl: "Praha,Praha_1" → "Praha"
                 city = address_url.split(",")[0].strip() if address_url else ""
 
+                disposition = self._decode_category(item.get("category", ""))
+
                 results.append({
                     "external_id": f"realingo_{external_id}",
                     "source": self.source_name,
@@ -94,6 +110,7 @@ class RealingScraper(BaseScraper):
                     "price": price,
                     "city": city.lower(),
                     "property_type": "Pronájem bytu",
+                    "disposition": disposition,
                     "url": url,
                 })
 
