@@ -76,13 +76,24 @@ class SrealitkyScraper(BaseScraper):
                 elif "garson" in title.lower():
                     disposition = "garsoniéra"
 
+                # Нормализуем тип: заголовок содержит мусор ("Pronájem bytu 2+kk 52 m²"),
+                # сводим к одному из трёх чистых значений
+                low = title.lower()
+                if "pokoj" in low:
+                    prop_type = "Комната/подселение"
+                    disposition = None  # у комнаты диспозиции нет
+                elif "dům" in low or "domu" in low:
+                    prop_type = "Pronájem domu"
+                else:
+                    prop_type = "Pronájem bytu"
+
                 results.append({
                     "external_id": external_id,
                     "source": self.source_name,
                     "title": address,
                     "price": price,
                     "city": city,
-                    "property_type": title,
+                    "property_type": prop_type,
                     "url": url,
                     "disposition": disposition,
                 })
