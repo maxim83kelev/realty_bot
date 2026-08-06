@@ -54,12 +54,13 @@ class RealcityScraper(BaseScraper):
                 except:
                     pass
 
-                # Диспозиция из заголовка ссылки
+                # Диспозиция из текста карточки: "Byt pronájem 1+1 41 m²" → "1+1"
+                card_text = card.get_text(" ", strip=True)
                 disposition = None
-                m = re.search(r'\b(\d\s*\+\s*(?:kk|\d))\b', title, re.IGNORECASE)
+                m = re.search(r'\b(\d\s*\+\s*(?:kk|\d))\b', card_text, re.IGNORECASE)
                 if m:
                     disposition = m.group(1).replace(" ", "").lower()
-                elif "garson" in title.lower():
+                elif "garson" in card_text.lower():
                     disposition = "garsoniéra"
 
                 results.append({
