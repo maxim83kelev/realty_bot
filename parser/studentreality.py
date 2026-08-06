@@ -60,6 +60,14 @@ class StudentrealityScraper(BaseScraper):
                         except:
                             pass
 
+                        # Диспозиция из заголовка
+                        disposition = None
+                        m = re.search(r'\b(\d\s*\+\s*(?:kk|\d))\b', title, re.IGNORECASE)
+                        if m:
+                            disposition = m.group(1).replace(" ", "").lower()
+                        elif "garson" in title.lower():
+                            disposition = "garsoniéra"
+
                         results.append({
                             "external_id": f"studentreality_{external_id}",
                             "source": self.source_name,
@@ -67,6 +75,7 @@ class StudentrealityScraper(BaseScraper):
                             "price": price,
                             "city": city,
                             "property_type": "Pronájem bytu",
+                            "disposition": disposition,
                             "url": data_url,
                         })
 
