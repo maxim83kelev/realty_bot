@@ -66,6 +66,28 @@ def detect_type(text):
             return "Pronájem bytu"
     return "Недвижимость"
 
+DISPOSITION_WORDS = {
+    "гарсонка": "garsoniéra", "гарсоньерка": "garsoniéra", "гарсоньєрка": "garsoniéra",
+    "студия": "1+kk", "студію": "1+kk", "студия/1+kk": "1+kk",
+    "однушка": "1+kk", "однокомнатная": "1+kk", "1-комнатная": "1+kk",
+    "двушка": "2+kk", "двухкомнатная": "2+kk", "2-комнатная": "2+kk",
+    "трешка": "3+kk", "трёшка": "3+kk", "трехкомнатная": "3+kk", "3-комнатная": "3+kk",
+}
+
+def detect_disposition(text):
+    low = text.lower()
+    # Стандартный формат: 2+kk, 3+1, 2кк
+    m = re.search(r'\b(\d)\s*\+\s*(kk|\d)\b', low)
+    if m:
+        return f"{m.group(1)}+{m.group(2)}"
+    m = re.search(r'\b(\d)\s*кк\b', low)   # "2кк" → "2+kk"
+    if m:
+        return f"{m.group(1)}+kk"
+    # Словесные формы
+    for word, disp in DISPOSITION_WORDS.items():
+        if word in low:
+            return disp
+    return None
 
 def extract_price(text):
     matches = re.findall(r'(\d[\d\s]{2,6})\s*(?:kč|крон|czk|кч|кц)', text.lower())
@@ -121,6 +143,10 @@ class TelegramChannelScraper(BaseScraper):
                 price = extract_price(msg.text)
                 city = extract_city(msg.text)
                 title = msg.text[:100].replace("\n", " ")
+
+                # Диспозиция только для квартир; у комнат её нет
+                disposition = detect_disposition(msg.text) if prop_type == "Pronájem bytu" else None
+
                 results.append({
                     "external_id": external_id,
                     "source": self.source_name,
@@ -128,6 +154,7 @@ class TelegramChannelScraper(BaseScraper):
                     "price": price,
                     "city": city,
                     "property_type": prop_type,
+                    "disposition": disposition,
                     "url": url,
                 })
             await client.disconnect()
