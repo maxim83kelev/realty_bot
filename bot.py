@@ -67,6 +67,27 @@ def dispositions_from_rooms(room_keys: list[str]) -> list[str]:
         out.extend(ROOM_GROUPS.get(k, []))
     return out
 
+def format_disposition(lang: str, disp) -> str | None:
+    """Массив диспозиций из БД → человеческая строка. ['2+kk','2+1','3+kk','3+1'] → '2, 3'"""
+    if not disp:
+        return None
+    labels = {"studio": t(lang, "disp_studio"), "2": t(lang, "disp_2_short"),
+              "3": t(lang, "disp_3_short"), "4": t(lang, "disp_4")}
+    order = ["studio", "2", "3", "4"]
+    found = []
+    for key in order:
+        # группа считается выбранной, если хоть одна её диспозиция есть в массиве
+        if any(d in disp for d in ROOM_GROUPS.get(key, [])):
+            found.append(labels[key])
+    return ", ".join(found) if found else None
+
+def with_rooms_line(lang: str, text: str, disp) -> str:
+    """Дописывает строку '🚪 Комнаты: 2, 3' к карточке, если диспозиция задана."""
+    rooms = format_disposition(lang, disp)
+    if not rooms:
+        return text
+    return text + "\n" + t(lang, "disp_rooms_line", rooms=rooms)
+
 def disposition_keyboard(lang: str, selected: list[str]) -> InlineKeyboardMarkup:
     """Чекбоксы выбора числа комнат. selected — уже отмеченные ключи (studio/2/3/4)."""
     def mark(key, label):
@@ -301,10 +322,12 @@ async def finish_edit(message, state, lang):
         [InlineKeyboardButton(text=t(lang, "edit_type_btn"), callback_data="edit_type")],
     ])
     await message.answer(
-        t(lang, "filter_updated",
-          city=format_city(lang, data.get("city")),
-          price=format_price(lang, data.get("price_min"), data.get("price_max")),
-          type=format_type(lang, data.get("property_type"))),
+        with_rooms_line(lang,
+            t(lang, "filter_updated",
+              city=format_city(lang, data.get("city")),
+              price=format_price(lang, data.get("price_min"), data.get("price_max")),
+              type=format_type(lang, data.get("property_type"))),
+            data.get("disposition")),
         reply_markup=kb
     )
     # дайджест по обновлённому фильтру
@@ -566,10 +589,12 @@ async def _finish_disposition(message, state, lang):
     await state.clear()
 
     await message.answer(
-        t(lang, "filter_saved",
-          city=format_city(lang, data.get("city")),
-          price=format_price(lang, data.get("price_min"), data.get("price_max")),
-          type=format_type(lang, data.get("property_type"))),
+        with_rooms_line(lang,
+            t(lang, "filter_saved",
+              city=format_city(lang, data.get("city")),
+              price=format_price(lang, data.get("price_min"), data.get("price_max")),
+              type=format_type(lang, data.get("property_type"))),
+            data.get("disposition")),
         reply_markup=ReplyKeyboardRemove()
     )
     asyncio.create_task(send_initial_digest(message.chat.id, data.get("city"), data.get("price_min"), data.get("price_max"), data.get("property_type"), lang))
@@ -592,10 +617,12 @@ async def cmd_myfilter(message: Message):
         [InlineKeyboardButton(text=t(lang, "edit_type_btn"), callback_data="edit_type")],
     ])
     await message.answer(
-        t(lang, "your_filter",
-          city=format_city(lang, f['city']),
-          price=format_price(lang, f['price_min'], f['price_max']),
-          type=format_type(lang, f['property_type'])),
+        with_rooms_line(lang,
+            t(lang, "your_filter",
+              city=format_city(lang, f['city']),
+              price=format_price(lang, f['price_min'], f['price_max']),
+              type=format_type(lang, f['property_type'])),
+            f['disposition']),
         reply_markup=kb
     )
     
