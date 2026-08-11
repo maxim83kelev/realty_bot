@@ -53,6 +53,34 @@ def format_type(lang: str, prop_type) -> str:
     key = PROP_TYPE_KEYS.get(prop_type)
     return t(lang, key) if key else prop_type
 
+# Число комнат → какие диспозиции матчит
+ROOM_GROUPS = {
+    "studio": ["1+kk", "garsoniéra"],
+    "2": ["2+kk", "2+1"],
+    "3": ["3+kk", "3+1"],
+    "4": ["4+kk", "4+1", "5+kk", "5+1", "6+kk", "6+1", "7+1"],
+}
+
+def dispositions_from_rooms(room_keys: list[str]) -> list[str]:
+    out = []
+    for k in room_keys:
+        out.extend(ROOM_GROUPS.get(k, []))
+    return out
+
+def disposition_keyboard(lang: str, selected: list[str]) -> InlineKeyboardMarkup:
+    """Чекбоксы выбора числа комнат. selected — уже отмеченные ключи (studio/2/3/4)."""
+    def mark(key, label):
+        check = "✅ " if key in selected else "▫️ "
+        return InlineKeyboardButton(text=check + label, callback_data=f"disp_{key}")
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [mark("studio", t(lang, "disp_studio"))],
+        [mark("2", t(lang, "disp_2"))],
+        [mark("3", t(lang, "disp_3"))],
+        [mark("4", t(lang, "disp_4"))],
+        [InlineKeyboardButton(text=t(lang, "disp_any"), callback_data="disp_any")],
+        [InlineKeyboardButton(text=t(lang, "disp_done"), callback_data="disp_done")],
+    ])
+
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
@@ -62,6 +90,7 @@ class FilterSetup(StatesGroup):
     price_min = State()
     price_max = State()
     property_type = State()
+    disposition = State()
     broadcast = State()
     feedback = State()
     reply = State()
@@ -254,12 +283,12 @@ async def save_filter_to_db(user_id, data):
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", user_id)
         await conn.execute("""
-            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type, disposition)
+            VALUES ($1, $2, $3, $4, $5, $6)
         """, user_id,
             normalize_city(data.get("city")) if data.get("city") else None,
             data.get("price_min"), data.get("price_max"),
-            data.get("property_type"))
+            data.get("property_type"), data.get("disposition"))
 
 
 async def finish_edit(message, state, lang):
@@ -449,6 +478,18 @@ async def filter_property_type(message: Message, state: FSMContext):
     
     await state.update_data(property_type=prop_type)
 
+    # Для квартиры — спрашиваем число комнат (диспозицию). Для остальных типов пропускаем.
+    if prop_type == "Pronájem bytu":
+        await state.update_data(selected_rooms=[])
+        await state.set_state(FilterSetup.disposition)
+        await message.answer(
+            t(lang, "ask_disposition"),
+            reply_markup=disposition_keyboard(lang, [])
+        )
+        return
+
+    await state.update_data(disposition=None)
+
     if data.get("edit_mode"):
         await finish_edit(message, state, lang)
         return
@@ -457,9 +498,9 @@ async def filter_property_type(message: Message, state: FSMContext):
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.from_user.id)
         await conn.execute("""
-            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type)
-            VALUES ($1, $2, $3, $4, $5)
-        """, message.from_user.id, normalize_city(data.get("city")) if data.get("city") else None, data.get("price_min"), data.get("price_max"), prop_type)
+            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type, disposition)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        """, message.from_user.id, normalize_city(data.get("city")) if data.get("city") else None, data.get("price_min"), data.get("price_max"), prop_type, None)
 
     await state.clear()
 
@@ -472,6 +513,66 @@ async def filter_property_type(message: Message, state: FSMContext):
     )
     # Сразу после сохранения фильтра — шлём дайджест из базы
     asyncio.create_task(send_initial_digest(message.from_user.id, data.get("city"), data.get("price_min"), data.get("price_max"), prop_type, lang))
+
+
+# --- Диспозиция: чекбоксы ---
+@dp.callback_query(F.data.startswith("disp_"))
+async def disposition_toggle(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get("lang", "ru")
+    action = cb.data[len("disp_"):]  # studio / 2 / 3 / 4 / any / done
+    selected = data.get("selected_rooms", [])
+
+    if action == "any":
+        selected = []  # любая планировка = без фильтра
+    elif action == "done":
+        room_keys = data.get("selected_rooms", [])
+        dispositions = dispositions_from_rooms(room_keys) or None
+        await state.update_data(disposition=dispositions)
+        await cb.message.edit_reply_markup(reply_markup=None)
+        await _finish_disposition(cb.message, state, lang)
+        await cb.answer()
+        return
+    else:
+        # переключаем галочку
+        if action in selected:
+            selected.remove(action)
+        else:
+            selected.append(action)
+
+    await state.update_data(selected_rooms=selected)
+    await cb.message.edit_reply_markup(reply_markup=disposition_keyboard(lang, selected))
+    await cb.answer()
+
+
+async def _finish_disposition(message, state, lang):
+    data = await state.get_data()
+
+    if data.get("edit_mode"):
+        await finish_edit(message, state, lang)
+        return
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM user_filters WHERE user_id = $1", message.chat.id)
+        await conn.execute("""
+            INSERT INTO user_filters (user_id, city, price_min, price_max, property_type, disposition)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        """, message.chat.id,
+            normalize_city(data.get("city")) if data.get("city") else None,
+            data.get("price_min"), data.get("price_max"),
+            data.get("property_type"), data.get("disposition"))
+
+    await state.clear()
+
+    await message.answer(
+        t(lang, "filter_saved",
+          city=format_city(lang, data.get("city")),
+          price=format_price(lang, data.get("price_min"), data.get("price_max")),
+          type=format_type(lang, data.get("property_type"))),
+        reply_markup=ReplyKeyboardRemove()
+    )
+    asyncio.create_task(send_initial_digest(message.chat.id, data.get("city"), data.get("price_min"), data.get("price_max"), data.get("property_type"), lang))
 
 # --- /myfilter ---
 @dp.message(Command("myfilter"))
@@ -507,7 +608,8 @@ async def edit_city_start(cb: CallbackQuery, state: FSMContext):
         f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
     if f:
         await state.update_data(city=f["city"], price_min=f["price_min"],
-                                price_max=f["price_max"], property_type=f["property_type"])
+                                price_max=f["price_max"], property_type=f["property_type"],
+                                disposition=f["disposition"])
     await state.set_state(FilterSetup.city)
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(t(lang, "ask_city"))
@@ -523,7 +625,8 @@ async def edit_price_start(cb: CallbackQuery, state: FSMContext):
         f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
     if f:
         await state.update_data(city=f["city"], price_min=f["price_min"],
-                                price_max=f["price_max"], property_type=f["property_type"])
+                                price_max=f["price_max"], property_type=f["property_type"],
+                                disposition=f["disposition"])
     await state.set_state(FilterSetup.price_min)
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(t(lang, "ask_price_min"))
@@ -539,7 +642,8 @@ async def edit_type_start(cb: CallbackQuery, state: FSMContext):
         f = await conn.fetchrow("SELECT * FROM user_filters WHERE user_id = $1", cb.from_user.id)
     if f:
         await state.update_data(city=f["city"], price_min=f["price_min"],
-                                price_max=f["price_max"], property_type=f["property_type"])
+                                price_max=f["price_max"], property_type=f["property_type"],
+                                disposition=f["disposition"])
     await state.set_state(FilterSetup.property_type)
     kb = ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text=t(lang, "type_flat"))],
