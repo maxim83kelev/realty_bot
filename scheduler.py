@@ -1,4 +1,8 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import re
+import asyncio
+import httpx
+from aiogram.types import InputMediaPhoto
 from parser.bezrealitky import BezrealitkyScraper
 from parser.jihomoravskereality import JihomoravskerealityScraper
 from parser.sreality import SrealitkyScraper
@@ -15,6 +19,30 @@ from parser.realingo import RealingScraper
 from parser.realcity import RealcityScraper
 
 scheduler = AsyncIOScheduler()
+
+
+async def fetch_photos(url: str, limit: int = 3) -> list[str]:
+    """Тянет первые N фото со страницы объявления. Пауза между запросами — чтобы сайт не принял за скрейпера."""
+    if not url:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        await asyncio.sleep(0.3)  # пауза после запроса страницы
+        # ссылки вида /static/images/offer/xxx/yyy-900x1200xd0d0d0.webp
+        found = re.findall(r'/static/images/offer/[^\s"\'?]+\.webp', r.text)
+        seen, out = set(), []
+        for p in found:
+            if p not in seen:
+                seen.add(p)
+                out.append(f"https://www.realingo.cz{p}")
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as e:
+        print(f"[fetch_photos] {url}: {e}")
+        return []
+
 
 async def parse_and_notify(scrapers=None):
     if scrapers is None:
@@ -37,11 +65,30 @@ async def parse_and_notify(scrapers=None):
                 f"💰 {listing['price']:,} Kč\n"
                 f"🔗 {listing['url']}"
             )
+
+            # Фото: сначала то, что дал парсер; если нет — тянем со страницы объявления
+            images = listing.get("image_urls") or []
+            if not images and listing.get("url"):
+                images = await fetch_photos(listing["url"], limit=3)
+            images = images[:3]
+
             for user_id in user_ids:
                 try:
-                    await bot.send_message(user_id, text)
+                    if images:
+                        media = [
+                            InputMediaPhoto(media=img, caption=text if i == 0 else None)
+                            for i, img in enumerate(images)
+                        ]
+                        await bot.send_media_group(user_id, media)
+                    else:
+                        await bot.send_message(user_id, text)
                 except Exception as e:
-                    print(f"[Notify] Не удалось отправить {user_id}: {e}")
+                    # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
+                    print(f"[Notify] альбом не ушёл {user_id}: {e}")
+                    try:
+                        await bot.send_message(user_id, text)
+                    except Exception as e2:
+                        print(f"[Notify] и текст не ушёл {user_id}: {e2}")
 
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper()]])
