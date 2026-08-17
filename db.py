@@ -53,8 +53,6 @@ async def create_tables():
             ALTER TABLE listings ADD COLUMN IF NOT EXISTS disposition TEXT;
             ALTER TABLE listings ADD COLUMN IF NOT EXISTS image_urls TEXT[];
             ALTER TABLE user_filters ADD COLUMN IF NOT EXISTS disposition TEXT[];
-            ALTER TABLE user_filters ALTER COLUMN disposition TYPE TEXT[]
-                USING CASE WHEN disposition IS NULL THEN NULL ELSE ARRAY[disposition] END;
         """)
 
 async def get_pool():
