@@ -62,11 +62,15 @@ class SrealitkyScraper(BaseScraper):
                 except:
                     pass
 
-                # Город из адреса
-                city = ""
-                if "," in address:
-                    city_part = address.split(",")[1].strip()
-                    city = city_part.split("-")[0].strip() if "-" in city_part else city_part
+                # Город: пробуем address, потом title. Работает и без запятой.
+                def extract_city(s):
+                    s = (s or "").strip()
+                    if not s:
+                        return ""
+                    part = s.split(",")[-1].strip() if "," in s else s
+                    return part.split("-")[0].strip()
+
+                city = extract_city(address) or extract_city(title)
 
                 # Диспозиция из заголовка: "Pronájem bytu 2+kk 52 m²" → "2+kk"
                 disposition = None
@@ -99,7 +103,6 @@ class SrealitkyScraper(BaseScraper):
                 })
 
             return results
-
         except Exception as e:
             print(f"[SrealitkyScraper] Ошибка: {e}")
             return []
