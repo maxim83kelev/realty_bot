@@ -159,7 +159,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                     AND (f.price_min IS NULL OR $2 >= f.price_min)
                     AND (f.price_max IS NULL OR $2 <= f.price_max)
                     AND (f.property_type IS NULL OR LOWER(f.property_type) = LOWER($3))
-                    AND (f.disposition IS NULL OR $4 IS NULL OR $4 = ANY(f.disposition))
+                    AND (f.disposition IS NULL OR $4::text IS NULL OR $4 = ANY(f.disposition))
             """, normalize_city(listing["city"]), listing["price"], listing["property_type"], listing.get("disposition"))
 
             if users:
