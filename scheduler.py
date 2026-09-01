@@ -59,37 +59,41 @@ async def parse_and_notify(scrapers=None):
         print(f"[{scraper.source_name}] Новых для рассылки: {len(matches)}")
 
         for listing, user_ids in matches:
-            text = (
-                f"🏠 {listing['property_type'].replace(chr(160), ' ')}\n"
-                f"📍 {listing['title']}\n"
-                f"💰 {listing['price']:,} Kč\n"
-                f"🔗 {listing['url']}"
-            )
+            try:
+                text = (
+                    f"🏠 {(listing.get('property_type') or '').replace(chr(160), ' ')}\n"
+                    f"📍 {listing.get('title') or ''}\n"
+                    f"💰 {listing.get('price') or 0:,} Kč\n"
+                    f"🔗 {listing.get('url') or ''}"
+                )
 
-            # Фото: сначала то, что дал парсер; если нет — тянем со страницы объявления
-            images = listing.get("image_urls") or []
-            if not images and listing.get("url"):
-                images = await fetch_photos(listing["url"], limit=3)
-            images = images[:3]
+                # Фото: сначала то, что дал парсер; если нет — тянем со страницы объявления
+                images = listing.get("image_urls") or []
+                if not images and listing.get("url"):
+                    images = await fetch_photos(listing["url"], limit=3)
+                images = images[:3]
 
-            for user_id in user_ids:
-                try:
-                    if images:
-                        media = [
-                            InputMediaPhoto(media=img, caption=text if i == 0 else None)
-                            for i, img in enumerate(images)
-                        ]
-                        await bot.send_media_group(user_id, media)
-                    else:
-                        await bot.send_message(user_id, text)
-                except Exception as e:
-                    # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
-                    print(f"[Notify] альбом не ушёл {user_id}: {e}")
+                for user_id in user_ids:
                     try:
-                        await bot.send_message(user_id, text)
-                    except Exception as e2:
-                        print(f"[Notify] и текст не ушёл {user_id}: {e2}")
-
+                        if images:
+                            media = [
+                                InputMediaPhoto(media=img, caption=text if i == 0 else None)
+                                for i, img in enumerate(images)
+                            ]
+                            await bot.send_media_group(user_id, media)
+                        else:
+                            await bot.send_message(user_id, text)
+                    except Exception as e:
+                        # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
+                        print(f"[Notify] альбом не ушёл {user_id}: {e}")
+                        try:
+                            await bot.send_message(user_id, text)
+                        except Exception as e2:
+                            print(f"[Notify] и текст не ушёл {user_id}: {e2}")
+            except Exception as e:
+                # одно битое объявление не должно ронять всю рассылку
+                print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
+                continue
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
