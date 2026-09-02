@@ -21,21 +21,64 @@ from parser.realcity import RealcityScraper
 scheduler = AsyncIOScheduler()
 
 
+# Правила извлечения фото по сайтам (regex по HTML страницы).
+# Чтобы добавить новый сайт с открытыми фото — допиши запись: домен → (регулярка пути, префикс).
+PHOTO_RULES = [
+    ("realingo.cz", r'/static/images/offer/[^\s"\'?]+\.webp', "https://www.realingo.cz"),
+]
+
+# sreality отдаёт фото не в HTML, а через API, и ссылки требуют параметров ?fl=...
+SREALITY_IMG_SUFFIX = "?fl=res,800,800,1|shr,,20|webp,60"
+
+
+async def fetch_sreality_photos(url: str, limit: int = 3) -> list[str]:
+    """Фото sreality — через официальный API по ID объявления."""
+    m = re.search(r'(\d{6,})', url)  # ID sreality — длинное число (9-10 цифр)
+    if not m:
+        return []
+    eid = m.group(1)
+    try:
+        api = f"https://www.sreality.cz/api/v1/estates/{eid}"
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(api, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        await asyncio.sleep(0.3)
+        imgs = r.json().get("result", {}).get("advert_images", [])
+        out = []
+        for im in imgs[:limit]:
+            u = im.get("url", "")
+            if u:
+                out.append(f"https:{u}{SREALITY_IMG_SUFFIX}")
+        return out
+    except Exception as e:
+        print(f"[fetch_photos sreality] {url}: {e}")
+        return []
+
+
 async def fetch_photos(url: str, limit: int = 3) -> list[str]:
-    """Тянет первые N фото со страницы объявления. Пауза между запросами — чтобы сайт не принял за скрейпера."""
+    """Первые N уникальных фото объявления. sreality — через API, остальные — regex по HTML."""
     if not url:
         return []
+
+    if "sreality.cz" in url:
+        return await fetch_sreality_photos(url, limit)
+
+    rule = next((r for r in PHOTO_RULES if r[0] in url), None)
+    if rule is None:
+        return []  # для этого сайта фото пока не поддерживаем — уйдёт текстом
+    _, pattern, prefix = rule
+
     try:
         async with httpx.AsyncClient(timeout=10) as c:
             r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
         await asyncio.sleep(0.3)  # пауза после запроса страницы
-        # ссылки вида /static/images/offer/xxx/yyy-900x1200xd0d0d0.webp
-        found = re.findall(r'/static/images/offer/[^\s"\'?]+\.webp', r.text)
+
+        found = re.findall(pattern, r.text)
         seen, out = set(), []
         for p in found:
-            if p not in seen:
-                seen.add(p)
-                out.append(f"https://www.realingo.cz{p}")
+            full = f"{prefix}{p}"
+            if full not in seen:
+                seen.add(full)
+                out.append(full)
             if len(out) >= limit:
                 break
         return out
@@ -66,7 +109,6 @@ async def parse_and_notify(scrapers=None):
                     f"💰 {listing.get('price') or 0:,} Kč\n"
                     f"🔗 {listing.get('url') or ''}"
                 )
-
                 # Фото: сначала то, что дал парсер; если нет — тянем со страницы объявления
                 images = listing.get("image_urls") or []
                 if not images and listing.get("url"):
