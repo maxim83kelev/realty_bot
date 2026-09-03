@@ -25,6 +25,7 @@ scheduler = AsyncIOScheduler()
 # Чтобы добавить новый сайт с открытыми фото — допиши запись: домен → (регулярка пути, префикс).
 PHOTO_RULES = [
     ("realingo.cz", r'/static/images/offer/[^\s"\'?]+\.webp', "https://www.realingo.cz"),
+    ("realcity.cz", r'//media\.realcity\.cz/files/resized/[^\s"\'?]+\.jpe?g', "https:"),
 ]
 
 # sreality отдаёт фото не в HTML, а через API, и ссылки требуют параметров ?fl=...
