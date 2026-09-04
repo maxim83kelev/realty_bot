@@ -10,6 +10,7 @@ from parser.bravis import BravisScraper
 from parser.telegram_channel import TelegramChannelScraper
 from matcher import save_and_match
 from bot import bot
+from reports import count_sent, notify_admin, add_daily_report
 from parser.rentumo import RentumoScraper
 from parser.marimaxi import MarimaxiScraper
 from parser.espolubydleni import EspolubydleniScraper
@@ -102,7 +103,6 @@ async def parse_and_notify(scrapers=None):
 
         matches = await save_and_match(listings)
         print(f"[{scraper.source_name}] Новых для рассылки: {len(matches)}")
-
         for listing, user_ids in matches:
             try:
                 text = (
@@ -116,6 +116,8 @@ async def parse_and_notify(scrapers=None):
                 if not images and listing.get("url"):
                     images = await fetch_photos(listing["url"], limit=3)
                 images = images[:3]
+                if not images:
+                    print(f"[NoPhoto] {listing.get('source','?')}: {listing.get('url','?')}")
 
                 for user_id in user_ids:
                     try:
@@ -127,11 +129,13 @@ async def parse_and_notify(scrapers=None):
                             await bot.send_media_group(user_id, media)
                         else:
                             await bot.send_message(user_id, text)
+                        count_sent()
                     except Exception as e:
                         # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
                         print(f"[Notify] альбом не ушёл {user_id}: {e}")
                         try:
                             await bot.send_message(user_id, text)
+                            count_sent()
                         except Exception as e2:
                             print(f"[Notify] и текст не ушёл {user_id}: {e2}")
             except Exception as e:
@@ -146,4 +150,5 @@ def start_scheduler():
         TelegramChannelScraper("arendakomnatPraha"),
         TelegramChannelScraper("superhome_czechia"),
     ]])
+    add_daily_report(scheduler)  # вечерний отчёт админу в 18:00
     scheduler.start()
