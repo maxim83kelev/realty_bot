@@ -95,13 +95,24 @@ async def parse_and_notify(scrapers=None):
         return
 
     for scraper in scrapers:
-        listings = await scraper.fetch_listings()
+        try:
+            listings = await scraper.fetch_listings()
+        except Exception as e:
+            print(f"[{scraper.source_name}] ПАРСЕР УПАЛ: {e}")
+            await notify_admin(f"parser_{scraper.source_name}",
+                               f"Парсер {scraper.source_name} упал: {e}")
+            continue
         print(f"[{scraper.source_name}] Найдено: {len(listings)}")
 
         if not listings:
             continue
-
-        matches = await save_and_match(listings)
+        try:
+            matches = await save_and_match(listings)
+        except Exception as e:
+            print(f"[{scraper.source_name}] МАТЧИНГ УПАЛ: {e}")
+            await notify_admin("matcher_failed",
+                               f"Матчинг упал ({scraper.source_name}): {e}")
+            continue
         print(f"[{scraper.source_name}] Новых для рассылки: {len(matches)}")
         for listing, user_ids in matches:
             try:
@@ -138,6 +149,8 @@ async def parse_and_notify(scrapers=None):
                             count_sent()
                         except Exception as e2:
                             print(f"[Notify] и текст не ушёл {user_id}: {e2}")
+                            await notify_admin("send_failed",
+                                               f"Не удалось отправить объявление юзеру {user_id}: {e2}")
             except Exception as e:
                 # одно битое объявление не должно ронять всю рассылку
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")

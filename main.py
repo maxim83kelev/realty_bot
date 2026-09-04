@@ -41,6 +41,10 @@ async def main():
     start_scheduler()
     print("✅ База подключена, планировщик запущен")
     print("🤖 Бот запущен...")
+    try:
+        await bot.send_message(ADMIN_ID, "✅ Бот запущен")
+    except Exception as e:
+        print(f"[main] не удалось уведомить о старте: {e}")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
