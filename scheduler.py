@@ -38,6 +38,31 @@ PHOTO_RULES = [
 SREALITY_IMG_SUFFIX = "?fl=res,800,800,1|shr,,20|webp,60"
 
 
+async def fetch_marimaxi_photos(url: str, limit: int = 3) -> list[str]:
+    """Фото marimaxi — PocketBase. Собираем URL из коллекции, record-id и имён файлов."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        await asyncio.sleep(0.3)
+        t = r.text
+        i = t.find("photos:[")
+        if i < 0:
+            return []
+        # record-id = последний id:"..." перед блоком photos
+        ids = re.findall(r'id:"([a-z0-9]{15})"', t[:i])
+        rec_id = ids[-1] if ids else None
+        if not rec_id:
+            return []
+        names = re.findall(r'"([^"]+\.(?:jpe?g|png|webp))"', t[i:i + 2000])
+        coll = "pbc_3981801833"
+        return [
+            f"https://marimaxi.pockethost.io/api/files/{coll}/{rec_id}/{n}?thumb=1280x720"
+            for n in names[:limit]
+        ]
+    except Exception as e:
+        print(f"[fetch_photos marimaxi] {url}: {e}")
+        return []
+
 async def fetch_sreality_photos(url: str, limit: int = 3) -> list[str]:
     """Фото sreality — через официальный API по ID объявления."""
     m = re.search(r'(\d{6,})', url)  # ID sreality — длинное число (9-10 цифр)
@@ -65,6 +90,9 @@ async def fetch_photos(url: str, limit: int = 3) -> list[str]:
     """Первые N уникальных фото объявления. sreality — через API, остальные — regex по HTML."""
     if not url:
         return []
+
+    if "marimaxi.cz" in url:
+        return await fetch_marimaxi_photos(url, limit)
 
     if "sreality.cz" in url:
         return await fetch_sreality_photos(url, limit)
