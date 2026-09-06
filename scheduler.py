@@ -30,6 +30,7 @@ PHOTO_RULES = [
     ("realcity.cz", r'//media\.realcity\.cz/files/resized/[^\s"\'?]+\.jpe?g', "https:"),
     ("bezrealitky.cz", r'https://api\.bezrealitky\.cz/media/cache/record_main/[^\s"\'?]+\.jpe?g', ""),
     ("moravskereality.cz", r'https://img\.ceskereality\.cz/foto/[^\s"\'?]+\.jpe?g', ""),
+    ("dumrealit.cz", r'/data/items/(?:(?!thumb/)[^\s"\'?])+\.jpe?g', "https://www.dumrealit.cz"),
 ]
 
 # sreality отдаёт фото не в HTML, а через API, и ссылки требуют параметров ?fl=...
