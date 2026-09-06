@@ -10,7 +10,8 @@ from parser.bravis import BravisScraper
 from parser.telegram_channel import TelegramChannelScraper
 from matcher import save_and_match
 from bot import bot
-from reports import count_sent, notify_admin, add_daily_report
+from aiogram.exceptions import TelegramForbiddenError
+from reports import count_sent, count_blocked, notify_admin, add_daily_report
 from parser.rentumo import RentumoScraper
 from parser.marimaxi import MarimaxiScraper
 from parser.espolubydleni import EspolubydleniScraper
@@ -142,12 +143,18 @@ async def parse_and_notify(scrapers=None):
                         else:
                             await bot.send_message(user_id, text)
                         count_sent()
+                    except TelegramForbiddenError:
+                        count_blocked()
+                        print(f"[Blocked] {user_id} заблокировал бота")
                     except Exception as e:
                         # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
                         print(f"[Notify] альбом не ушёл {user_id}: {e}")
                         try:
                             await bot.send_message(user_id, text)
                             count_sent()
+                        except TelegramForbiddenError:
+                            count_blocked()
+                            print(f"[Blocked] {user_id} заблокировал бота")
                         except Exception as e2:
                             print(f"[Notify] и текст не ушёл {user_id}: {e2}")
                             await notify_admin("send_failed",

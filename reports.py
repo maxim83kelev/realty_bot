@@ -23,6 +23,19 @@ def count_sent():
     _sent_today["count"] += 1
 
 
+# Счётчик заблокировавших бота за день
+_blocked_today = {"count": 0, "date": datetime.now().date()}
+
+
+def count_blocked():
+    """Вызывать, когда юзер заблокировал бота (TelegramForbiddenError)."""
+    today = datetime.now().date()
+    if _blocked_today["date"] != today:
+        _blocked_today["count"] = 0
+        _blocked_today["date"] = today
+    _blocked_today["count"] += 1
+
+
 async def build_report() -> str:
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -52,6 +65,7 @@ async def build_report() -> str:
         f"👥 Пользователей: {total_users} (+{new_users} сегодня)\n"
         f"🔔 Активных фильтров: {active_filters}\n"
         f"📤 Отправлено объявлений сегодня: {_sent_today['count']}\n"
+        f"🚫 Заблокировали бота сегодня: {_blocked_today['count']}\n"
         f"🏠 Объявлений в базе: {total_listings} (+{new_listings} сегодня)\n\n"
         f"🏙 Топ городов (фильтры):\n{cities_text}\n"
         f"🌍 Без фильтра города: {no_city}"
@@ -63,9 +77,11 @@ async def send_daily_report():
     try:
         report = await build_report()
         await bot.send_message(ADMIN_ID, report)
-        # обнуляем счётчик отправленных после отчёта
+        # обнуляем счётчики после отчёта
         _sent_today["count"] = 0
         _sent_today["date"] = datetime.now().date()
+        _blocked_today["count"] = 0
+        _blocked_today["date"] = datetime.now().date()
     except Exception as e:
         print(f"[Report] не удалось отправить отчёт: {e}")
 
