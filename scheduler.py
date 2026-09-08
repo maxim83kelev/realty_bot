@@ -49,6 +49,28 @@ PHOTO_RULES = [
 SREALITY_IMG_SUFFIX = "?fl=res,800,800,1|shr,,20|webp,60"
 
 
+async def fetch_rentumo_photos(url: str, limit: int = 3) -> list[str]:
+    """Фото rentumo — imgproxy. Дедуп по закодированному оригиналу (у одного снимка много размеров)."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        await asyncio.sleep(0.3)
+        found = re.findall(r'https://img\.rentumo\.com/[A-Za-z0-9_/:.-]+', r.text)
+        seen, out = set(), []
+        for f in found:
+            m = re.search(r'/s:\d+:\d+(?:/rt:[^/]+)?/(.+)$', f)
+            orig = m.group(1) if m else f  # закодированный оригинал = ключ дедупа
+            if orig not in seen:
+                seen.add(orig)
+                out.append(f)
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as e:
+        print(f"[fetch_photos rentumo] {url}: {e}")
+        return []
+
+
 async def fetch_marimaxi_photos(url: str, limit: int = 3) -> list[str]:
     """Фото marimaxi — PocketBase. Собираем URL из коллекции, record-id и имён файлов."""
     try:
@@ -101,6 +123,9 @@ async def fetch_photos(url: str, limit: int = 3) -> list[str]:
     """Первые N уникальных фото объявления. sreality — через API, остальные — regex по HTML."""
     if not url:
         return []
+
+    if "rentumo.cz" in url:
+        return await fetch_rentumo_photos(url, limit)
 
     if "marimaxi.cz" in url:
         return await fetch_marimaxi_photos(url, limit)
