@@ -51,6 +51,8 @@ class StudentrealityScraper(BaseScraper):
                         h2 = card.find("h2")
                         title_link = h2.find("a") if h2 else None
                         title = title_link.get_text(strip=True) if title_link else ""
+                        href = title_link.get("href", "") if title_link else ""
+                        listing_url = f"{BASE_URL}{href}" if href.startswith("/") else (href or data_url)
 
                         price_div = card.find("div", class_="price")
                         price_raw = price_div.get_text(strip=True) if price_div else ""
@@ -76,7 +78,7 @@ class StudentrealityScraper(BaseScraper):
                             "city": city,
                             "property_type": "Pronájem bytu",
                             "disposition": disposition,
-                            "url": data_url,
+                            "url": listing_url,
                         })
 
                 await browser.close()

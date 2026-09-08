@@ -43,6 +43,7 @@ PHOTO_RULES = [
     ("moravskereality.cz", r'https://img\.ceskereality\.cz/foto/[^\s"\'?]+\.jpe?g', ""),
     ("dumrealit.cz", r'/data/items/(?:(?!thumb/)[^\s"\'?])+\.jpe?g', "https://www.dumrealit.cz"),
     ("bravis.cz", r'/advimg/list2x/[^\s"\'?]+\.jpe?g', "https://www.bravis.cz"),
+    ("studentreality.cz", r'/cdn/upload/[A-Za-z0-9_/.-]+\.jpe?g', "https://www.studentreality.cz"),
 ]
 
 # sreality отдаёт фото не в HTML, а через API, и ссылки требуют параметров ?fl=...
