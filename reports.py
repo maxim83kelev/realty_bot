@@ -40,6 +40,8 @@ async def build_report() -> str:
     pool = await get_pool()
     async with pool.acquire() as conn:
         total_users = await conn.fetchval("SELECT COUNT(*) FROM users")
+        active_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE active = true")
+        inactive_users = total_users - active_users
         new_users = await conn.fetchval(
             "SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE"
         )
@@ -63,6 +65,7 @@ async def build_report() -> str:
     report = (
         f"📊 Отчёт за {datetime.now():%d.%m.%Y}\n\n"
         f"👥 Пользователей: {total_users} (+{new_users} сегодня)\n"
+        f"✅ Активных: {active_users} | 🚫 заблокировали: {inactive_users}\n"
         f"🔔 Активных фильтров: {active_filters}\n"
         f"📤 Отправлено объявлений сегодня: {_sent_today['count']}\n"
         f"🚫 Заблокировали бота сегодня: {_blocked_today['count']}\n"

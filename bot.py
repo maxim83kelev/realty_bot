@@ -146,6 +146,7 @@ async def cmd_start(message: Message):
             VALUES ($1, $2)
             ON CONFLICT (id) DO NOTHING
         """, message.from_user.id, message.from_user.username)
+        await conn.execute("UPDATE users SET active = true WHERE id = $1", message.from_user.id)
 
     if not existing:
         kb = InlineKeyboardMarkup(inline_keyboard=[

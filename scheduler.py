@@ -12,6 +12,17 @@ from matcher import save_and_match
 from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
 from reports import count_sent, count_blocked, notify_admin, add_daily_report
+from db import get_pool
+
+
+async def mark_inactive(user_id: int):
+    """Юзер заблокировал бота — помечаем неактивным, чтобы больше не слать и не долбиться впустую."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("UPDATE users SET active = false WHERE id = $1", user_id)
+    except Exception as e:
+        print(f"[mark_inactive] {user_id}: {e}")
 from parser.rentumo import RentumoScraper
 from parser.marimaxi import MarimaxiScraper
 from parser.espolubydleni import EspolubydleniScraper
@@ -175,6 +186,7 @@ async def parse_and_notify(scrapers=None):
                         count_sent()
                     except TelegramForbiddenError:
                         count_blocked()
+                        await mark_inactive(user_id)
                         print(f"[Blocked] {user_id} заблокировал бота")
                     except Exception as e:
                         # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
@@ -184,6 +196,7 @@ async def parse_and_notify(scrapers=None):
                             count_sent()
                         except TelegramForbiddenError:
                             count_blocked()
+                            await mark_inactive(user_id)
                             print(f"[Blocked] {user_id} заблокировал бота")
                         except Exception as e2:
                             print(f"[Notify] и текст не ушёл {user_id}: {e2}")

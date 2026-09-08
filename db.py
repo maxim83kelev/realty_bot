@@ -53,6 +53,7 @@ async def create_tables():
             ALTER TABLE listings ADD COLUMN IF NOT EXISTS disposition TEXT;
             ALTER TABLE listings ADD COLUMN IF NOT EXISTS image_urls TEXT[];
             ALTER TABLE user_filters ADD COLUMN IF NOT EXISTS disposition TEXT[];
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
         """)
 
 async def get_pool():
