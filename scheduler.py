@@ -239,6 +239,7 @@ def start_scheduler():
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
         TelegramChannelScraper("superhome_czechia"),
+        TelegramChannelScraper("Brno_Nemovitost_Iryna"),
     ]])
     add_daily_report(scheduler)  # вечерний отчёт админу в 18:00
     scheduler.start()
