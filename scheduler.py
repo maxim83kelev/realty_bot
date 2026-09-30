@@ -7,6 +7,7 @@ from parser.bezrealitky import BezrealitkyScraper
 from parser.jihomoravskereality import JihomoravskerealityScraper
 from parser.sreality import SrealitkyScraper
 from parser.bravis import BravisScraper
+from parser.realitymix import RealitymixScraper
 from parser.telegram_channel import TelegramChannelScraper
 from matcher import save_and_match
 from bot import bot
@@ -44,6 +45,7 @@ PHOTO_RULES = [
     ("dumrealit.cz", r'/data/items/(?:(?!thumb/)[^\s"\'?])+\.jpe?g', "https://www.dumrealit.cz"),
     ("bravis.cz", r'/advimg/list2x/[^\s"\'?]+\.jpe?g', "https://www.bravis.cz"),
     ("studentreality.cz", r'/cdn/upload/[A-Za-z0-9_/.-]+\.jpe?g', "https://www.studentreality.cz"),
+    ("realitymix.cz", r'https?://st\.realitymix\.cz/i/[^\s"\'?]+_detail\.jpe?g', ""),
 ]
 
 # sreality отдаёт фото не в HTML, а через API, и ссылки требуют параметров ?fl=...
@@ -233,7 +235,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
