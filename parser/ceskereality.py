@@ -77,7 +77,7 @@ class CeskerealityScraper(BaseScraper):
                     digits = re.sub(r'[^\d]', '', m_price.group(1))
                     if digits:
                         price = int(digits)
-                if price <= 0:
+                if price <= 0 or price > 1_000_000:
                     continue
 
                 seen.add(ext_id)
