@@ -63,7 +63,7 @@ class RemaxScraper(BaseScraper):
 
                 txt = card.get_text(" ", strip=True)
 
-                m_title = re.search(r'(Pron[aá]jem[^\d]*\d[^|]{0,80})', txt)
+                m_title = re.search(r'(Pron[aá]jem[^\d]*\d[^|]{0,120})', txt)
                 title = m_title.group(1).strip() if m_title else txt[:80]
 
                 price = 0
@@ -88,11 +88,18 @@ class RemaxScraper(BaseScraper):
 
                 disposition = detect_disposition(title) if prop_type == "Pronájem bytu" else None
 
+                # Город в заголовке после запятой: "...35 m², Luštěnice (ID ...)"
                 city = ""
-                for kw in CITY_KEYWORDS:
-                    if kw in title:
-                        city = kw
-                        break
+                m_city = re.search(r',\s*([^,(]+?)\s*(?:\(|$)', title)
+                if m_city:
+                    city = m_city.group(1).strip()
+                    city = re.split(r'\s[-–]\s', city)[0].strip()   # "Praha - Smíchov" → "Praha"
+                    city = re.sub(r'\s+\d+$', '', city).strip()      # "Praha 5" → "Praha"
+                if not city:
+                    for kw in CITY_KEYWORDS:
+                        if kw in title:
+                            city = kw
+                            break
 
                 url = href if href.startswith("http") else f"{BASE_URL}{href}"
 
