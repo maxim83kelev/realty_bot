@@ -127,15 +127,21 @@ async def fetch_sreality_photos(url: str, limit: int = 3) -> list[str]:
 
 
 async def fetch_remax_photos(url: str, limit: int = 3) -> list[str]:
-    """Фото remax: в HTML thumbnail (_th350), срезаем суффикс → полноразмер."""
+    """Фото remax: только галерея объекта — папка /zs/{id}/, где id из URL.
+    Отсекаем фото маклера (/uzivatele/) и 'похожие' (другой id). _th350 → полноразмер."""
+    m_id = re.search(r'/reality/detail/(\d+)/', url)
+    if not m_id:
+        return []
+    lid = m_id.group(1)
     try:
         async with httpx.AsyncClient(timeout=10) as c:
             r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
         await asyncio.sleep(0.3)
-        found = re.findall(r'https://mlsf\.remax-czech\.cz/data/[^\s"\'?]+?\.jpg', r.text)
+        pat = rf'https://mlsf\.remax-czech\.cz/data/+zs/{lid}/[^\s"\'?]+?\.jpe?g'
+        found = re.findall(pat, r.text)
         seen, out = set(), []
         for p in found:
-            full = re.sub(r'_th\d+\.jpg$', '.jpg', p)  # _th350 → полноразмер
+            full = re.sub(r'_th\d+(\.jpe?g)$', r'\1', p)  # _th350 → полноразмер
             if full not in seen:
                 seen.add(full)
                 out.append(full)
