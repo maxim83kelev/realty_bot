@@ -10,6 +10,8 @@ from parser.bravis import BravisScraper
 from parser.realitymix import RealitymixScraper
 from parser.ceskereality import CeskerealityScraper
 from parser.telegram_channel import TelegramChannelScraper
+from parser.realcity import RealcityScraper
+from parser.remax import RemaxScraper
 from matcher import save_and_match
 from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
@@ -124,6 +126,26 @@ async def fetch_sreality_photos(url: str, limit: int = 3) -> list[str]:
         return []
 
 
+async def fetch_remax_photos(url: str, limit: int = 3) -> list[str]:
+    """Фото remax: в HTML thumbnail (_th350), срезаем суффикс → полноразмер."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        await asyncio.sleep(0.3)
+        found = re.findall(r'https://mlsf\.remax-czech\.cz/data/[^\s"\'?]+?\.jpg', r.text)
+        seen, out = set(), []
+        for p in found:
+            full = re.sub(r'_th\d+\.jpg$', '.jpg', p)  # _th350 → полноразмер
+            if full not in seen:
+                seen.add(full)
+                out.append(full)
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as e:
+        print(f"[fetch_photos remax] {url}: {e}")
+        return []
+
 async def fetch_photos(url: str, limit: int = 3) -> list[str]:
     """Первые N уникальных фото объявления. sreality — через API, остальные — regex по HTML."""
     if not url:
@@ -134,6 +156,9 @@ async def fetch_photos(url: str, limit: int = 3) -> list[str]:
 
     if "marimaxi.cz" in url:
         return await fetch_marimaxi_photos(url, limit)
+    
+    if "remax-czech.cz" in url:
+        return await fetch_remax_photos(url, limit)
 
     if "sreality.cz" in url:
         return await fetch_sreality_photos(url, limit)
@@ -237,7 +262,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper(),CeskerealityScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
