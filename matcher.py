@@ -116,9 +116,10 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
 
     async with pool.acquire() as conn:
         for listing in listings:
-            # Защита от объявлений с нераспарсенной ценой
-            if not listing.get("price") or listing["price"] <= 0:
-                print(f"[ZeroPrice] source={listing.get('source')} ...")
+            # Защита от объявлений с нераспарсенной или мусорной ценой
+            price = listing.get("price")
+            if not price or price <= 0 or price > 1_000_000:
+                print(f"[BadPrice] source={listing.get('source')} price={price} url={listing.get('url')}")
                 continue
 
             # Защита от объявлений без города — иначе матчатся под любой фильтр
