@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from db import get_pool
 from bot import bot
+from healthcheck import run_healthcheck
 
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
@@ -80,6 +81,12 @@ async def send_daily_report():
     try:
         report = await build_report()
         await bot.send_message(ADMIN_ID, report)
+        # заодно — состояние парсеров
+        try:
+            health = await run_healthcheck()
+            await bot.send_message(ADMIN_ID, health)
+        except Exception as e:
+            print(f"[Report] healthcheck не отправился: {e}")
         # обнуляем счётчики после отчёта
         _sent_today["count"] = 0
         _sent_today["date"] = datetime.now().date()
