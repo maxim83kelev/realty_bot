@@ -12,6 +12,7 @@ from parser.ceskereality import CeskerealityScraper
 from parser.telegram_channel import TelegramChannelScraper
 from parser.realcity import RealcityScraper
 from parser.remax import RemaxScraper
+from parser.ulovdomov import UlovDomovScraper
 from matcher import save_and_match
 from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
@@ -268,7 +269,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
