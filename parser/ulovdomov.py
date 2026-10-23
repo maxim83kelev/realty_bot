@@ -13,6 +13,16 @@ HEADERS = {
     "Referer": "https://www.ulovdomov.cz/",
 }
 
+# тело запроса: bounds — рамка на всю Чехию; без него API отдаёт 400/500
+BODY = {
+    "bounds": {
+        "northEast": {"lat": 51.06, "lng": 18.87},
+        "southWest": {"lat": 48.55, "lng": 12.09},
+    },
+    "offerType": "rent",
+    "propertyType": "flat",
+}
+
 NUM = {"one": "1", "two": "2", "three": "3", "four": "4",
        "five": "5", "six": "6", "seven": "7"}
 
@@ -42,7 +52,7 @@ class UlovDomovScraper(BaseScraper):
     async def fetch_listings(self) -> list[dict]:
         try:
             async with httpx.AsyncClient(timeout=20) as c:
-                r = await c.post(API_URL, headers=HEADERS)
+                r = await c.post(API_URL, headers=HEADERS, json=BODY)
                 r.raise_for_status()
             offers = (r.json().get("data") or {}).get("offers") or []
 
