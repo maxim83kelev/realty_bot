@@ -10,7 +10,6 @@ from parser.bravis import BravisScraper
 from parser.realitymix import RealitymixScraper
 from parser.ceskereality import CeskerealityScraper
 from parser.telegram_channel import TelegramChannelScraper
-from parser.realcity import RealcityScraper
 from parser.remax import RemaxScraper
 from parser.ulovdomov import UlovDomovScraper
 from matcher import save_and_match
@@ -37,6 +36,10 @@ from parser.realingo import RealingScraper
 from parser.realcity import RealcityScraper
 
 scheduler = AsyncIOScheduler()
+
+# счётчик нулевых проходов по источникам — для алерта о сдохшем парсере
+_zero_streak = {}
+ZERO_ALERT_THRESHOLD = 5   # столько нулей подряд = бьём тревогу
 
 
 # Правила извлечения фото по сайтам (regex по HTML страницы).
@@ -210,7 +213,15 @@ async def parse_and_notify(scrapers=None):
         print(f"[{scraper.source_name}] Найдено: {len(listings)}")
 
         if not listings:
+            _zero_streak[scraper.source_name] = _zero_streak.get(scraper.source_name, 0) + 1
+            if _zero_streak[scraper.source_name] == ZERO_ALERT_THRESHOLD:
+                await notify_admin(
+                    f"parser_dead_{scraper.source_name}",
+                    f"🧟 Парсер {scraper.source_name} отдаёт 0 объявлений уже "
+                    f"{ZERO_ALERT_THRESHOLD} проходов подряд — похоже, сломался."
+                )
             continue
+        _zero_streak[scraper.source_name] = 0
         try:
             matches = await save_and_match(listings)
         except Exception as e:
@@ -269,7 +280,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(), RealcityScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
