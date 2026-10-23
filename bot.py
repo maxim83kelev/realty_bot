@@ -11,6 +11,7 @@ from locales import t
 from aiogram.types import CallbackQuery
 from matcher import normalize_city, validate_city, get_price_median
 from urllib.parse import quote
+from healthcheck import run_healthcheck
 
 
 import asyncio
@@ -802,6 +803,23 @@ async def cmd_admin(message: Message):
         f"🏙 Топ городов:\n{cities_text}\n"
         f"🌍 Без фильтра города: {any_city_count}"
     )
+
+@dp.message(Command("acheck"))
+async def cmd_acheck(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔️ Нет доступа.")
+        return
+    await message.answer("🩺 Проверяю парсеры, подожди 20–40 сек...")
+    try:
+        await bot.send_chat_action(message.chat.id, "typing")
+    except Exception:
+        pass
+    try:
+        report = await run_healthcheck()
+    except Exception as e:
+        report = f"❌ Проверка упала: {e!r}"
+    await message.answer(report)
+
 
 @dp.message(Command("ausers"))
 async def cmd_admin_users(message: Message):

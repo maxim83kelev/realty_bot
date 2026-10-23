@@ -26,6 +26,7 @@ async def set_commands():
         BotCommand(command="help", description="❓ Список команд"),
         BotCommand(command="cancel", description="❌ Отменить действие"),
         BotCommand(command="admin", description="📊 Статистика"),
+        BotCommand(command="acheck", description="🩺 Проверить парсеры"),
         BotCommand(command="ausers", description="👥 Список пользователей"),
         BotCommand(command="abroadcast", description="📢 Рассылка всем"),
         BotCommand(command="aclear", description="🗑 Очистить старые объявления"),
