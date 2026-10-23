@@ -17,6 +17,7 @@ from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
 from reports import count_sent, count_blocked, notify_admin, add_daily_report
 from db import get_pool
+from datetime import datetime
 
 
 async def mark_inactive(user_id: int):
@@ -38,9 +39,8 @@ from parser.realcity import RealcityScraper
 scheduler = AsyncIOScheduler()
 
 # счётчик нулевых проходов по источникам — для алерта о сдохшем парсере
-_zero_streak = {}
-ZERO_ALERT_THRESHOLD = 5   # столько нулей подряд = бьём тревогу
-
+_zero_since = {}            # источник -> момент начала серии нулей
+ALERT_AFTER_MIN = 15        # столько минут подряд по нулям = тревога
 
 # Правила извлечения фото по сайтам (regex по HTML страницы).
 # Чтобы добавить новый сайт с открытыми фото — допиши запись: домен → (регулярка пути, префикс).
@@ -213,15 +213,16 @@ async def parse_and_notify(scrapers=None):
         print(f"[{scraper.source_name}] Найдено: {len(listings)}")
 
         if not listings:
-            _zero_streak[scraper.source_name] = _zero_streak.get(scraper.source_name, 0) + 1
-            if _zero_streak[scraper.source_name] == ZERO_ALERT_THRESHOLD:
+            now = datetime.now()
+            started = _zero_since.setdefault(scraper.source_name, now)
+            if (now - started).total_seconds() >= ALERT_AFTER_MIN * 60:
                 await notify_admin(
                     f"parser_dead_{scraper.source_name}",
                     f"🧟 Парсер {scraper.source_name} отдаёт 0 объявлений уже "
-                    f"{ZERO_ALERT_THRESHOLD} проходов подряд — похоже, сломался."
+                    f"больше {ALERT_AFTER_MIN} мин подряд — похоже, сломался."
                 )
             continue
-        _zero_streak[scraper.source_name] = 0
+        _zero_since.pop(scraper.source_name, None)
         try:
             matches = await save_and_match(listings)
         except Exception as e:
