@@ -243,20 +243,8 @@ async def validate_city(text: str) -> tuple[str, str | None]:
     known = await get_known_cities()
 
     # Brno совпадает с "brno - řečkovice", "brno-střed" и т.д.
-    # 1) точное совпадение
-    if city in known:
-        return ("ok", city)
-
-    # 2) известный город сидит внутри мусорного ввода ("brno hlavní", "praha 9",
-    #    "brno, křenovice") → чистим, сохраняем сам город. Длинные сначала,
-    #    чтобы "mladá boleslav" не схлопнулось в "mladá".
-    for k in sorted(known, key=len, reverse=True):
-        if len(k) >= 3 and k in city:
-            return ("ok", k)
-
-    # 3) ввод — часть более длинного названия (район) → оставляем широкий ввод
     for k in known:
-        if city in k:
+        if city == k or city in k or k in city:
             return ("ok", city)
 
     # Похожий город: brnoo → brno, prga → praha
