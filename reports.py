@@ -62,6 +62,10 @@ async def build_report() -> str:
         )
 
     cities_text = "\n".join(f"  {r['city']}: {r['n']}" for r in cities) or "  —"
+    shown = sum(r['n'] for r in cities)
+    others = active_filters - shown - no_city
+    if others > 0:
+        cities_text += f"\n  прочие города: {others}"
 
     report = (
         f"📊 Отчёт за {datetime.now():%d.%m.%Y}\n\n"
