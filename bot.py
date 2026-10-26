@@ -203,7 +203,7 @@ async def remind_filter(user_id: int):
 async def open_feedback(callback: CallbackQuery, state: FSMContext):
     lang = await get_user_lang(callback.from_user.id)
     await state.set_state(FilterSetup.feedback)
-    text = "✍️ Напиши свой отзыв или сообщи о проблеме — я прочитаю лично:" if lang == "ru" else "✍️ Napiš svůj feedback nebo nahlas problém — přečtu si to osobně:"
+    text = "✍️ Напиши мне — вопрос, проблема или пожелание. Прочитаю лично:" if lang == "ru" else "✍️ Napiš mi — dotaz, problém nebo nápad. Přečtu si to osobně:"
     await callback.message.answer(text)
     await callback.answer()               
 
@@ -741,7 +741,7 @@ async def cmd_stop(message: Message):
 async def cmd_feedback(message: Message, state: FSMContext):
     lang = await get_user_lang(message.from_user.id)
     await state.set_state(FilterSetup.feedback)
-    text = "✍️ Напиши свой отзыв или сообщи о проблеме — я прочитаю лично:" if lang == "ru" else "✍️ Napiš svůj feedback nebo nahlas problém — přečtu si to osobně:"
+    text = "✍️ Напиши мне — вопрос, проблема или пожелание. Прочитаю лично:" if lang == "ru" else "✍️ Napiš mi — dotaz, problém nebo nápad. Přečtu si to osobně:"
     await message.answer(text)
 
 @dp.message(FilterSetup.feedback)

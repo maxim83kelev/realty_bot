@@ -11,7 +11,7 @@ async def set_commands():
         BotCommand(command="myfilter", description="Мой текущий фильтр"),
         BotCommand(command="digest", description="🔍 Объявления из базы по моему фильтру"),
         BotCommand(command="stop", description="Остановить уведомления"),
-        BotCommand(command="feedback", description="💬 Написать автору"),
+        BotCommand(command="feedback", description="💬 Связь с автором"),
         BotCommand(command="help", description="❓ Список команд"),
         BotCommand(command="cancel", description="❌ Отменить действие"),
     ], scope=BotCommandScopeDefault())
@@ -22,7 +22,7 @@ async def set_commands():
         BotCommand(command="myfilter", description="Мой текущий фильтр"),
         BotCommand(command="digest", description="🔍 Объявления из базы по моему фильтру"),
         BotCommand(command="stop", description="Остановить уведомления"),
-        BotCommand(command="feedback", description="💬 Написать автору"),
+        BotCommand(command="feedback", description="💬 Связь с автором"),
         BotCommand(command="help", description="❓ Список команд"),
         BotCommand(command="cancel", description="❌ Отменить действие"),
         BotCommand(command="admin", description="📊 Статистика"),
