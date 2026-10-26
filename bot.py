@@ -453,7 +453,7 @@ async def send_initial_digest(user_id: int, city: str, price_min, price_max, pro
             SELECT title, price, city, property_type, url
             FROM listings
             WHERE
-                ($1::text IS NULL OR LOWER(city) LIKE '%' || LOWER($1) || '%' OR LOWER($1) LIKE '%' || LOWER(city) || '%')
+                ($1::text IS NULL OR unaccent(LOWER(city)) LIKE '%' || unaccent(LOWER($1)) || '%' OR unaccent(LOWER($1)) LIKE '%' || unaccent(LOWER(city)) || '%')
                 AND ($2::int IS NULL OR price >= $2)
                 AND ($3::int IS NULL OR price <= $3)
                 AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))
@@ -703,7 +703,7 @@ async def cmd_digest(message: Message):
             SELECT title, price, city, property_type, url, source, created_at
             FROM listings
             WHERE
-                ($1::text IS NULL OR LOWER(city) LIKE '%' || LOWER($1) || '%' OR LOWER($1) LIKE '%' || LOWER(city) || '%')
+                ($1::text IS NULL OR unaccent(LOWER(city)) LIKE '%' || unaccent(LOWER($1)) || '%' OR unaccent(LOWER($1)) LIKE '%' || unaccent(LOWER(city)) || '%')
                 AND ($2::int IS NULL OR price >= $2)
                 AND ($3::int IS NULL OR price <= $3)
                 AND ($4::text IS NULL OR LOWER(property_type) = LOWER($4))

@@ -157,7 +157,7 @@ async def save_and_match(listings: list[dict]) -> list[tuple[dict, list[int]]]:
                 JOIN user_filters f ON f.user_id = u.id
                 WHERE
                     u.active = true
-                    AND (f.city IS NULL OR LOWER($1) LIKE '%' || LOWER(f.city) || '%' OR LOWER(f.city) LIKE '%' || LOWER($1) || '%')
+                    AND (f.city IS NULL OR unaccent(LOWER($1)) LIKE '%' || unaccent(LOWER(f.city)) || '%' OR unaccent(LOWER(f.city)) LIKE '%' || unaccent(LOWER($1)) || '%')
                     AND (f.price_min IS NULL OR $2 >= f.price_min)
                     AND (f.price_max IS NULL OR $2 <= f.price_max)
                     AND (f.property_type IS NULL OR LOWER(f.property_type) = LOWER($3))
