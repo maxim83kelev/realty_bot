@@ -12,8 +12,8 @@ from parser.ceskereality import CeskerealityScraper
 from parser.telegram_channel import TelegramChannelScraper
 from parser.remax import RemaxScraper
 from parser.ulovdomov import UlovDomovScraper
-from parser.ulovdomov import UlovDomovScraper
 from parser.bazos import BazosScraper
+from parser.proradost import ProradostScraper
 from matcher import save_and_match
 from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
@@ -307,7 +307,7 @@ async def parse_and_notify(scrapers=None):
                 continue
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper(),BazosScraper()]])
-    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper(),ProradostScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
         TelegramChannelScraper("arendakomnatPraha"),
