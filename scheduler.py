@@ -12,6 +12,8 @@ from parser.ceskereality import CeskerealityScraper
 from parser.telegram_channel import TelegramChannelScraper
 from parser.remax import RemaxScraper
 from parser.ulovdomov import UlovDomovScraper
+from parser.ulovdomov import UlovDomovScraper
+from parser.bazos import BazosScraper
 from matcher import save_and_match
 from bot import bot
 from aiogram.exceptions import TelegramForbiddenError
@@ -156,6 +158,26 @@ async def fetch_remax_photos(url: str, limit: int = 3) -> list[str]:
         print(f"[fetch_photos remax] {url}: {e}")
         return []
 
+async def fetch_bazos_photos(url: str, limit: int = 3) -> list[str]:
+    """Фото bazos: на детальной странице миниатюры img/{N}t/..., полноразмер — тот же путь без 't'."""
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as c:
+            r = await c.get(url, headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "cs-CZ,cs;q=0.9"})
+        await asyncio.sleep(0.3)
+        raw = re.findall(r'https://www\.bazos\.cz/img/\d+t?/\d+/\d+\.jpg(?:\?t=\d+)?', r.text)
+        seen, out = set(), []
+        for u in raw:
+            full = re.sub(r'(/img/)(\d+)t/', r'\1\2/', u)
+            if full not in seen:
+                seen.add(full)
+                out.append(full)
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as e:
+        print(f"[fetch_photos bazos] {url}: {e}")
+        return []
+
 async def fetch_photos(url: str, limit: int = 3) -> list[str]:
     """Первые N уникальных фото объявления. sreality — через API, остальные — regex по HTML."""
     if not url:
@@ -169,6 +191,9 @@ async def fetch_photos(url: str, limit: int = 3) -> list[str]:
     
     if "remax-czech.cz" in url:
         return await fetch_remax_photos(url, limit)
+    
+    if "bazos.cz" in url:
+        return await fetch_bazos_photos(url, limit)
 
     if "sreality.cz" in url:
         return await fetch_sreality_photos(url, limit)
@@ -281,7 +306,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper(),BazosScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
