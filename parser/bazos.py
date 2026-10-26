@@ -75,6 +75,13 @@ class BazosScraper(BaseScraper):
                     if popis:
                         disposition = detect_disposition(popis.get_text())
 
+                # мусор bazos: заграница и уже сданное/зарезервированное
+                low = title.lower()
+                if city.lower().startswith("zahrani"):
+                    continue
+                if any(w in low for w in ("rezervováno", "rezervovano", "pronajato", "pronajmuto", "pronajaty")):
+                    continue
+
                 url = href if href.startswith("http") else f"{BASE_URL}{href}"
 
                 results.append({
