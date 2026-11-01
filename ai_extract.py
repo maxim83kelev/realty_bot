@@ -64,3 +64,26 @@ def extract_filter(text):
         time.sleep(2)
     print(f"[ai_extract] не вышло: {last}")
     return None
+
+def extract_filter_from_audio(audio_bytes, mime_type="audio/ogg"):
+    """Голосовое (байты аудио) -> dict с параметрами фильтра (или None)."""
+    last = None
+    for attempt in range(3):
+        try:
+            resp = _get_client().models.generate_content(
+                model=MODEL,
+                contents=[
+                    PROMPT,
+                    types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
+                ],
+            )
+            data = _extract_json(resp.text)
+            if data is not None:
+                return data
+            last = "пустой ответ"
+        except Exception as e:
+            last = e
+            print(f"[ai_extract audio] попытка {attempt + 1}: {e}")
+        time.sleep(2)
+    print(f"[ai_extract audio] не вышло: {last}")
+    return None
