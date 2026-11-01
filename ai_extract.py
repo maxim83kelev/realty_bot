@@ -2,10 +2,11 @@
 import os
 import json
 import re
+import time
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-3.8-flash"
+MODEL = "gemini-2.5-flash-lite"
 
 PROMPT = (
     "Ты парсер запросов на аренду жилья в Чехии. Пользователь пишет или говорит "
@@ -47,7 +48,7 @@ def _extract_json(raw):
 def extract_filter(text):
     """Текст запроса -> dict с параметрами фильтра (или None при сбое)."""
     last = None
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             resp = _get_client().models.generate_content(
                 model=MODEL,
@@ -60,5 +61,6 @@ def extract_filter(text):
         except Exception as e:
             last = e
             print(f"[ai_extract] попытка {attempt + 1}: {e}")
+        time.sleep(2)
     print(f"[ai_extract] не вышло: {last}")
     return None
