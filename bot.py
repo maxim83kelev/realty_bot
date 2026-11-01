@@ -1061,7 +1061,7 @@ async def send_reply(message: Message, state: FSMContext):
         
         
 # ============ ИИ-разбор свободного текста (Gemini) ============
-from ai_extract import extract_filter
+from ai_extract import extract_filter, extract_filter_from_audio
 
 AI_PROP_MAP = {
     "byt": "Pronájem bytu",
@@ -1144,3 +1144,34 @@ async def ai_manual(cb: CallbackQuery, state: FSMContext):
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer("Ок. Настроить вручную — /filter")
     await cb.answer()
+    
+@dp.message(F.voice, StateFilter(None))
+async def ai_voice(message: Message, state: FSMContext):
+    lang = await get_user_lang(message.from_user.id)
+    thinking = await message.answer("🎤 Слушаю...")
+    try:
+        buf = await bot.download(message.voice)
+        audio_bytes = buf.read()
+    except Exception as e:
+        print(f"[ai_voice] download: {e}")
+        await thinking.edit_text("Не смог скачать голосовое. Попробуй ещё раз или напиши текстом.")
+        return
+    data = await asyncio.to_thread(extract_filter_from_audio, audio_bytes, "audio/ogg")
+    f = _ai_to_filter(data)
+    if not f:
+        await thinking.edit_text(
+            "Не разобрал голосовое 🤷 Скажи чётче или напиши текстом, например: «двушка в Брно до 15000»."
+        )
+        return
+    await state.update_data(ai_filter=f, lang=lang)
+    summary = with_rooms_line(lang,
+        ("🔍 Понял так:\n\n"
+         f"🏙 Город: {format_city(lang, f['city'])}\n"
+         f"💰 Цена: {format_price(lang, f['price_min'], f['price_max'])}\n"
+         f"🏠 Тип: {format_type(lang, f['property_type'])}"),
+        f["disposition"])
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, искать", callback_data="ai_ok")],
+        [InlineKeyboardButton(text="✏️ Настроить вручную", callback_data="ai_manual")],
+    ])
+    await thinking.edit_text(summary + "\n\nВсё верно?", reply_markup=kb)
