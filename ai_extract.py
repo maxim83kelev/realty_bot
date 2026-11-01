@@ -2,6 +2,8 @@ import os
 import json
 import re
 from google import genai
+from google.genai import types
+
 
 MODEL = "gemini-flash-latest"
 
@@ -25,7 +27,10 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        _client = genai.Client(
+            api_key=os.getenv("GEMINI_API_KEY"),
+            http_options=types.HttpOptions(timeout=30000),
+        )
     return _client
 
 
