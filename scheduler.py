@@ -306,7 +306,7 @@ async def parse_and_notify(scrapers=None):
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
 def start_scheduler():
-    scheduler.add_job(parse_and_notify, "interval", seconds=10, args=[[BezrealitkyScraper(), SrealitkyScraper(), JihomoravskerealityScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),CeskerealityScraper(),RemaxScraper(),UlovDomovScraper(),BazosScraper()]])
+    scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BezrealitkyScraper(), SrealitkyScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),RemaxScraper(),UlovDomovScraper(),BazosScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper(),ProradostScraper()]])
     scheduler.add_job(parse_and_notify, "interval", seconds=30, args=[[
         TelegramChannelScraper("sosedi_brno"),
