@@ -5,7 +5,7 @@ import re
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-3.8-flash"
 
 PROMPT = (
     "Ты парсер запросов на аренду жилья в Чехии. Пользователь пишет или говорит "
