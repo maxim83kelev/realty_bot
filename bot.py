@@ -1058,3 +1058,89 @@ async def send_reply(message: Message, state: FSMContext):
         await message.answer(f"✅ Ответ отправлен пользователю {target_id}.")
     except Exception as e:
         await message.answer(f"❌ Не удалось отправить: {e}")
+        
+        
+# ============ ИИ-разбор свободного текста (Gemini) ============
+from ai_extract import extract_filter
+
+AI_PROP_MAP = {
+    "byt": "Pronájem bytu",
+    "pokoj": "Комната/подселение",
+    "dum": "Pronájem domu",
+}
+
+
+def _ai_to_filter(data: dict):
+    """Сырой JSON от Gemini -> поля фильтра. None, если это не похоже на поиск."""
+    if not data:
+        return None
+    city = (str(data.get("city") or "")).strip() or None
+    price_min = data.get("price_min")
+    price_max = data.get("price_max")
+    prop = AI_PROP_MAP.get(str(data.get("property_type") or "").lower())
+    rooms = data.get("rooms")
+    rooms = str(rooms) if rooms is not None else None
+    disposition = dispositions_from_rooms([rooms]) if (rooms and prop == "Pronájem bytu") else None
+    if not any([city, price_min, price_max, prop, disposition]):
+        return None
+    return {
+        "city": city,
+        "price_min": price_min if isinstance(price_min, int) and price_min > 0 else None,
+        "price_max": price_max if isinstance(price_max, int) and price_max > 0 else None,
+        "property_type": prop,
+        "disposition": disposition,
+    }
+
+
+@dp.message(F.text & ~F.text.startswith("/"), StateFilter(None))
+async def ai_free_text(message: Message, state: FSMContext):
+    lang = await get_user_lang(message.from_user.id)
+    thinking = await message.answer("🤔 Понимаю запрос...")
+    data = await asyncio.to_thread(extract_filter, message.text.strip())
+    f = _ai_to_filter(data)
+    if not f:
+        txt = ("Не понял это как поиск жилья. Чтобы настроить фильтр вручную — /filter"
+               if lang == "ru" else
+               "Nerozumím tomu jako hledání. Pro ruční nastavení — /filter")
+        await thinking.edit_text(txt)
+        return
+    await state.update_data(ai_filter=f, lang=lang)
+    summary = with_rooms_line(lang,
+        ("🔍 Понял так:\n\n"
+         f"🏙 Город: {format_city(lang, f['city'])}\n"
+         f"💰 Цена: {format_price(lang, f['price_min'], f['price_max'])}\n"
+         f"🏠 Тип: {format_type(lang, f['property_type'])}"),
+        f["disposition"])
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, искать", callback_data="ai_ok")],
+        [InlineKeyboardButton(text="✏️ Настроить вручную", callback_data="ai_manual")],
+    ])
+    await thinking.edit_text(summary + "\n\nВсё верно?", reply_markup=kb)
+
+
+@dp.callback_query(F.data == "ai_ok")
+async def ai_confirm(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    f = data.get("ai_filter")
+    lang = data.get("lang", "ru")
+    if not f:
+        await cb.answer()
+        return
+    await save_filter_to_db(cb.from_user.id, f)
+    await state.clear()
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "filter_saved",
+        city=format_city(lang, f["city"]),
+        price=format_price(lang, f["price_min"], f["price_max"]),
+        type=format_type(lang, f["property_type"])))
+    asyncio.create_task(send_initial_digest(
+        cb.from_user.id, f["city"], f["price_min"], f["price_max"], f["property_type"], lang))
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "ai_manual")
+async def ai_manual(cb: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer("Ок. Настроить вручную — /filter")
+    await cb.answer()
