@@ -4,7 +4,7 @@ import os
 
 from parser.base import BaseScraper
 
-SKIP = {"base.py", "telegram_channel.py", "healthcheck.py", "realcity.py"}
+SKIP = {"base.py", "telegram_channel.py", "healthcheck.py", "realcity.py", "ceskereality.py", "jihomoravskereality.py"}
 TIMEOUT = 60  # сек на один парсер
 
 
