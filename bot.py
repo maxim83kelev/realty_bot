@@ -1069,6 +1069,58 @@ AI_PROP_MAP = {
     "dum": "Pronájem domu",
 }
 
+USER_CMDS = {"myfilter", "digest", "help", "start", "filter", "feedback"}
+
+async def _route_intent(message: Message, state: FSMContext, data: dict, thinking) -> bool:
+    """Если это команда — выполняет и возвращает True. Если поиск/прочее — False."""
+    if not data or data.get("intent") != "command":
+        return False
+    cmd = data.get("command")
+
+    if cmd in USER_CMDS:
+        await thinking.delete()
+        if cmd == "myfilter":
+            await cmd_myfilter(message)
+        elif cmd == "digest":
+            await cmd_digest(message)
+        elif cmd == "help":
+            await cmd_help(message)
+        elif cmd == "start":
+            await cmd_start(message)
+        elif cmd == "filter":
+            await cmd_filter(message, state)
+        elif cmd == "feedback":
+            await cmd_feedback(message, state)
+        return True
+
+    if cmd == "stop":
+        await thinking.edit_text(
+            "🔕 Остановить уведомления? Текущий фильтр удалится.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Да, остановить", callback_data="ai_stop_ok")],
+                [InlineKeyboardButton(text="Отмена", callback_data="ai_stop_no")],
+            ]))
+        return True
+
+    return False  # админские команды — phase B, пока уходят в обычную ветку
+
+
+@dp.callback_query(F.data == "ai_stop_ok")
+async def ai_stop_ok(cb: CallbackQuery):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM user_filters WHERE user_id = $1", cb.from_user.id)
+    lang = await get_user_lang(cb.from_user.id)
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(t(lang, "stopped"))
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "ai_stop_no")
+async def ai_stop_no(cb: CallbackQuery):
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer("Ок, оставил как есть.")
+    await cb.answer()
 
 def _ai_to_filter(data: dict):
     """Сырой JSON от Gemini -> поля фильтра. None, если это не похоже на поиск."""
@@ -1097,6 +1149,8 @@ async def ai_free_text(message: Message, state: FSMContext):
     lang = await get_user_lang(message.from_user.id)
     thinking = await message.answer("🤔 Понимаю запрос...")
     data = await asyncio.to_thread(extract_filter, message.text.strip())
+    if await _route_intent(message, state, data, thinking):
+        return
     f = _ai_to_filter(data)
     if not f:
         txt = ("Не понял это как поиск жилья. Чтобы настроить фильтр вручную — /filter"
@@ -1157,6 +1211,8 @@ async def ai_voice(message: Message, state: FSMContext):
         await thinking.edit_text("Не смог скачать голосовое. Попробуй ещё раз или напиши текстом.")
         return
     data = await asyncio.to_thread(extract_filter_from_audio, audio_bytes, "audio/ogg")
+    if await _route_intent(message, state, data, thinking):
+        return
     f = _ai_to_filter(data)
     if not f:
         await thinking.edit_text(
