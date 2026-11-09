@@ -227,6 +227,13 @@ async def cmd_cancel(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(t(lang, "cancelled"), reply_markup=ReplyKeyboardRemove())
 
+# НОВОЕ — универсальная отмена, работает в любом состоянии мастера
+@dp.message(F.text.lower().in_({"стоп", "стой", "отмена", "отменить", "cancel", "назад"}),
+            ~StateFilter(None))
+async def cancel_any_state(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🚫 Отменил. Пиши, что ищешь, или команду.")
+
 # --- /filter ---
 @dp.message(Command("filter"))
 async def cmd_filter(message: Message, state: FSMContext):
@@ -1071,6 +1078,13 @@ AI_PROP_MAP = {
 
 USER_CMDS = {"myfilter", "digest", "help", "start", "filter", "feedback"}
 
+_EXACT = {
+    "фильтр": "filter", "фильтры": "filter", "настройки": "filter",
+    "стоп": "stop", "стой": "stop", "помощь": "help", "старт": "start",
+    "дайджест": "digest", "что есть": "digest",
+    "мой фильтр": "myfilter", "связь": "feedback", "связь с автором": "feedback",
+}
+
 async def _route_intent(message: Message, state: FSMContext, data: dict, thinking) -> bool:
     """Если это команда — выполняет и возвращает True. Если поиск/прочее — False."""
     if not data or data.get("intent") != "command":
@@ -1148,7 +1162,11 @@ def _ai_to_filter(data: dict):
 async def ai_free_text(message: Message, state: FSMContext):
     lang = await get_user_lang(message.from_user.id)
     thinking = await message.answer("🤔 Понимаю запрос...")
-    data = await asyncio.to_thread(extract_filter, message.text.strip())
+    key = message.text.strip().lower()
+    if key in _EXACT:
+        data = {"intent": "command", "command": _EXACT[key]}
+    else:
+        data = await asyncio.to_thread(extract_filter, message.text.strip())
     if await _route_intent(message, state, data, thinking):
         return
     f = _ai_to_filter(data)
