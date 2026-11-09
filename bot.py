@@ -1077,12 +1077,16 @@ AI_PROP_MAP = {
 }
 
 USER_CMDS = {"myfilter", "digest", "help", "start", "filter", "feedback"}
+ADMIN_RO = {"admin", "acheck", "ausers", "abandlist"}   # read-only → сразу
+ADMIN_NUDGE = {"aban", "aunban", "areply"}              # нужен id/текст → отправляем к слэш-команде
 
 _EXACT = {
     "фильтр": "filter", "фильтры": "filter", "настройки": "filter",
     "стоп": "stop", "стой": "stop", "помощь": "help", "старт": "start",
     "дайджест": "digest", "что есть": "digest",
     "мой фильтр": "myfilter", "связь": "feedback", "связь с автором": "feedback",
+    "статистика": "admin", "проверь парсеры": "acheck", "юзеры": "ausers",
+    "забаненные": "abandlist", "рассылка": "abroadcast", "почисти базу": "aclear",
 }
 
 async def _route_intent(message: Message, state: FSMContext, data: dict, thinking) -> bool:
@@ -1116,7 +1120,43 @@ async def _route_intent(message: Message, state: FSMContext, data: dict, thinkin
             ]))
         return True
 
-    return False  # админские команды — phase B, пока уходят в обычную ветку
+    # --- админские: только для ADMIN_ID ---
+    if cmd in (ADMIN_RO | ADMIN_NUDGE | {"abroadcast", "aclear"}):
+        if message.from_user.id != ADMIN_ID:
+            return False  # чужим молча в поиск, наличие команд не палим
+        if cmd in ADMIN_RO:
+            await thinking.delete()
+            if cmd == "admin":
+                await cmd_admin(message)
+            elif cmd == "acheck":
+                await cmd_acheck(message)
+            elif cmd == "ausers":
+                await cmd_admin_users(message)
+            elif cmd == "abandlist":
+                await cmd_ban_list(message)
+            return True
+        if cmd == "abroadcast":
+            await thinking.delete()
+            await cmd_broadcast(message, state)   # открывает обычный флоу, текст вводишь сам
+            return True
+        if cmd == "aclear":
+            await thinking.edit_text(
+                "🗑 Удалить объявления старше 7 дней?",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="Да, чистить", callback_data="ai_aclear_ok")],
+                    [InlineKeyboardButton(text="Отмена", callback_data="ai_aclear_no")],
+                ]))
+            return True
+        if cmd in ADMIN_NUDGE:
+            hints = {
+                "aban": "Бан — командой: /aban <user_id> [причина]",
+                "aunban": "Разбан — командой: /aunban <user_id>",
+                "areply": "Ответ — /areply <user_id> <текст> или кнопкой «Ответить» под фидбэком",
+            }
+            await thinking.edit_text(f"✍️ {hints[cmd]}")
+            return True
+
+    return False
 
 
 @dp.callback_query(F.data == "ai_stop_ok")
@@ -1134,6 +1174,28 @@ async def ai_stop_ok(cb: CallbackQuery):
 async def ai_stop_no(cb: CallbackQuery):
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer("Ок, оставил как есть.")
+    await cb.answer()
+    
+@dp.callback_query(F.data == "ai_aclear_ok")
+async def ai_aclear_ok(cb: CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⛔")
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        deleted = await conn.fetchval("""
+            WITH d AS (DELETE FROM listings WHERE created_at < NOW() - INTERVAL '7 days' RETURNING id)
+            SELECT COUNT(*) FROM d
+        """)
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(f"🗑 Удалено старых объявлений: {deleted or 0}")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "ai_aclear_no")
+async def ai_aclear_no(cb: CallbackQuery):
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer("Ок, базу не трогал.")
     await cb.answer()
 
 def _ai_to_filter(data: dict):
