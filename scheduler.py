@@ -16,7 +16,7 @@ from parser.bazos import BazosScraper
 from parser.proradost import ProradostScraper
 from matcher import save_and_match
 from bot import bot
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from reports import count_sent, count_blocked, notify_admin, add_daily_report
 from db import get_pool
 from datetime import datetime
@@ -30,6 +30,41 @@ async def mark_inactive(user_id: int):
             await conn.execute("UPDATE users SET active = false WHERE id = $1", user_id)
     except Exception as e:
         print(f"[mark_inactive] {user_id}: {e}")
+        
+async def safe_send_listing(user_id: int, text: str, images: list[str]) -> bool:
+    """Шлёт объявление (альбом или текст) с обработкой флуд-контроля.
+    True — дошло, False — юзер заблокировал бота / недоступен."""
+    use_images = bool(images)
+    for _ in range(4):
+        try:
+            if use_images:
+                media = [InputMediaPhoto(media=img, caption=text if i == 0 else None)
+                         for i, img in enumerate(images)]
+                await bot.send_media_group(user_id, media)
+            else:
+                await bot.send_message(user_id, text)
+            count_sent()
+            return True
+        except TelegramRetryAfter as e:                 # флуд: ждём ровно сколько велят
+            print(f"[safe_send] флуд {user_id}, ждём {e.retry_after}s")
+            await asyncio.sleep(e.retry_after + 0.5)
+        except TelegramForbiddenError:                  # юзер заблокировал бота
+            count_blocked()
+            await mark_inactive(user_id)
+            print(f"[Blocked] {user_id} заблокировал бота")
+            return False
+        except Exception as e:                          # альбом с битым фото → пробуем текстом
+            if use_images:
+                print(f"[Notify] альбом не ушёл {user_id}, пробую текстом: {e}")
+                use_images = False
+                continue
+            print(f"[Notify] и текст не ушёл {user_id}: {e}")
+            await notify_admin("send_failed",
+                               f"Не удалось отправить объявление юзеру {user_id}: {e}")
+            return False
+    await notify_admin("send_failed", f"Флуд не отпустил {user_id} за 4 попытки")
+    return False
+   
 from parser.rentumo import RentumoScraper
 from parser.marimaxi import MarimaxiScraper
 from parser.espolubydleni import EspolubydleniScraper
@@ -256,6 +291,9 @@ async def parse_and_notify(scrapers=None):
                                f"Матчинг упал ({scraper.source_name}): {e}")
             continue
         print(f"[{scraper.source_name}] Новых для рассылки: {len(matches)}")
+        # 1) готовим каждое объявление один раз (текст + фото), раскладываем по юзерам
+        prepared = []            # [(text, images), ...]
+        user_queue = {}          # user_id -> [индексы в prepared]
         for listing, user_ids in matches:
             try:
                 text = (
@@ -264,47 +302,30 @@ async def parse_and_notify(scrapers=None):
                     f"💰 {listing.get('price') or 0:,} Kč\n"
                     f"🔗 {listing.get('url') or ''}"
                 )
-                # Фото: сначала то, что дал парсер; если нет — тянем со страницы объявления
                 images = listing.get("image_urls") or []
                 if not images and listing.get("url"):
                     images = await fetch_photos(listing["url"], limit=3)
                 images = images[:3]
                 if not images:
                     print(f"[NoPhoto] {listing.get('source','?')}: {listing.get('url','?')}")
-
-                for user_id in user_ids:
-                    try:
-                        if images:
-                            media = [
-                                InputMediaPhoto(media=img, caption=text if i == 0 else None)
-                                for i, img in enumerate(images)
-                            ]
-                            await bot.send_media_group(user_id, media)
-                        else:
-                            await bot.send_message(user_id, text)
-                        count_sent()
-                    except TelegramForbiddenError:
-                        count_blocked()
-                        await mark_inactive(user_id)
-                        print(f"[Blocked] {user_id} заблокировал бота")
-                    except Exception as e:
-                        # альбом не ушёл (битые фото / лимит) — шлём текстом, объявление не теряем
-                        print(f"[Notify] альбом не ушёл {user_id}: {e}")
-                        try:
-                            await bot.send_message(user_id, text)
-                            count_sent()
-                        except TelegramForbiddenError:
-                            count_blocked()
-                            await mark_inactive(user_id)
-                            print(f"[Blocked] {user_id} заблокировал бота")
-                        except Exception as e2:
-                            print(f"[Notify] и текст не ушёл {user_id}: {e2}")
-                            await notify_admin("send_failed",
-                                               f"Не удалось отправить объявление юзеру {user_id}: {e2}")
+                idx = len(prepared)
+                prepared.append((text, images))
+                for uid in user_ids:
+                    user_queue.setdefault(uid, []).append(idx)
             except Exception as e:
-                # одно битое объявление не должно ронять всю рассылку
                 print(f"[Notify] объявление пропущено ({listing.get('url', '?')}): {e}")
                 continue
+
+        # 2) шлём по юзерам, с паузами: ≤1 сообщение/сек в один чат, лёгкий зазор между юзерами
+        for uid, idxs in user_queue.items():
+            for idx in idxs:
+                text, images = prepared[idx]
+                ok = await safe_send_listing(uid, text, images)
+                if not ok:
+                    break                      # заблокировал/недоступен — дальше ему не шлём
+                await asyncio.sleep(1.1)       # per-chat throttle
+            await asyncio.sleep(0.3)           # зазор между юзерами
+            
 def start_scheduler():
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BezrealitkyScraper(), SrealitkyScraper(), RentumoScraper(), MarimaxiScraper(), EspolubydleniScraper(), RealingScraper(),RealitymixScraper(),RemaxScraper(),UlovDomovScraper(),BazosScraper()]])
     scheduler.add_job(parse_and_notify, "interval", minutes=5, args=[[BravisScraper(), DumrealiScraper(), StudentrealityScraper(),ProradostScraper()]])
